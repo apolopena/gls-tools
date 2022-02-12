@@ -16,6 +16,7 @@
 # https://github.com/apolopena/gitpod-laravel-starter/tree/main/.gp/updater-manifest.yml
 
 # TODOS
+# verify gls verion (quit if there is no .gp directory)
 # Warn users if there is no manifest (version is lower than 1.6)
 # If version <= 1.5
 #   warn user there is no manifest, inform them what will be changed
@@ -35,12 +36,16 @@ name() {
   printf '%s' "$(basename "${BASH_SOURCE[0]}")"
 }
 
-a_msg() {
-  echo "$(name) ABORTED"
+warn_msg() {
+  echo -e "$(name) WARNING:\n\t$1"
 }
 
-e_msg() {
+err_msg() {
   echo -e "$(name) ERROR:\n\t$1"
+}
+
+abort_msg() {
+  echo "$(name) ABORTED"
 }
 
 # split_ver
@@ -100,20 +105,38 @@ gls_version() {
   return 0
 }
 
+set_base_version_unknown() {
+  local unknown_msg="The current gls version has been set to 'unknown' but is assumed to be >= 1.0.0"
+  base_version='unknown' && echo "$unknown_msg"
+}
+
 set_base_version() {
-  local ver ec hook1 hook2 err_p1 err_p2 err_p3
-  hook1="$(pwd)/.gp"
-  hook2="$hook1/CHANGELOG.md"
+  local ver input ec gp_dir changelog err_p1 err_p2 err_p3
+  gp_dir="$(pwd)/.gp"
+  changelog="$gp_dir/CHANGELOGCACAq.md"
   err_p1="Undectable gls version"
-  err_p2="Could not find required file: $hook2"
-  err_p3="Could not parse version number from: $hook2"
-
-  [[ ! -d $hook1 ]] && e_msg "$err_p1 Could not find $hook1" && return 1
-  [[ ! -f $hook2 ]] && e_msg "$err_p1\n\t$err_p2" && return 1
-
-  ver="$(gls_version "$hook2")"
+  err_p2="Could not find required file: $changelog"
+  err_p3="Could not parse version number from: $changelog"
+  err_p4="Base version is too old, it must be >= 1.0.0\n\tYou will need to perform the update manaully."
+  # Derive base version by other means if the CHANGELOG.md is not present or cannot be parsed
+  if [[ ! -f $changelog ]]; then
+    warn_msg "$err_p1\n\t$err_p2"
+    echo -n "Enter the gls version you are updating from (y=skip): "
+    read -r input
+    [[ $input == y ]] && return 1
+    # regexp match only: major.minor.patch with a range 0-999 for each one and no trailing zeros
+    local regexp='^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$'
+    if [[ $input =~ $regexp ]]; then
+       [[ $(comp_ver_lt "$input" 1.0.0 ) == 1 ]] && echo -e "$err_p4" && abort_msg && exit 1
+      base_version="$input" && echo "Base gls version set by user to: $input" && return 0
+    else
+      echo "Invalid version: $input" && return 1
+    fi
+  fi
+  # Derive version from CHANGELOG.md
+  ver="$(gls_version "$changelog")"
   ec=$?
-  [[ $ec == 1 ]] && e_msg "$err_p3\n\tThis file should never be altered but it was." && return 1
+  [[ $ec == 1 ]] && err_msg "$err_p3\n\tThis file should never be altered but it was." && return 1
   base_version="$ver"
   return 0
 }
@@ -129,13 +152,13 @@ do_yq() {
 main() {
   local e1 e2
   e1="Version mismatch"
-  if ! set_target_version; then a_msg && exit 1; fi
-  if ! set_base_version; then a_msg && exit 1; fi
+  if ! set_target_version; then abort_msg && exit 1; fi
+  if ! set_base_version; then set_base_version_unknown; fi
   if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
     e2="You current version v$base_version must be less than the latest version v$target_version"
-    e_msg "$e1\n\t$e2" && a_msg && exit 1
+    err_msg "$e1\n\t$e2" && a_msg && exit 1
   fi
-  echo "Updating gls v$base_version to v$target_version"
+  echo "Updating gls version $base_version to version $target_version"
 }
 
 main
