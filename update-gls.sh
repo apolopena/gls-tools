@@ -11,7 +11,7 @@
 # Automated update with step by step merging of critical files in your existing project.
 #
 # Notes:
-# Supports gitpod-laraver starter versions > v0.0.4
+# Supports gitpod-laraver starter versions >= v1.0.0
 # For specifics on what files are updated, replaced, left alone, etc.. see: up-manifest.yml @
 # https://github.com/apolopena/gitpod-laravel-starter/tree/main/.gp/updater-manifest.yml
 
@@ -31,6 +31,11 @@
 # Globals
 target_version=
 base_version=
+d_keeps=() # Files to keep
+d_merges=() # Files to merge
+d_backups=() # Files to recommend backing up and hand merging
+tmp_dir="$(pwd)/.tmp_gls_update" # Temporary working directory
+release_json="$tmp_dir/latest_release.json" # Latest release data file
 
 name() {
   printf '%s' "$(basename "${BASH_SOURCE[0]}")"
@@ -60,10 +65,8 @@ abort_msg() {
 # split_ver 6.31.140
 # # outputs: 6 31 140 
 split_ver() {
-  local first=${1%%.*} # Delete first dot and what follows
-  local last=${1##*.} # Delete up to last dot
-  local mid=${1##$first.} # Delete first number and dot
-  mid=${mid%%.$last} # Delete dot and last number
+  local first mid last
+  first=${1%%.*}; last=${1##*.}; mid=${1##$first.}; mid=${mid%%.$last}
   echo "$first $mid $last"
 }
 
@@ -97,12 +100,33 @@ comp_ver_lt() {
   echo 0
 }
 
+# gls_verion
+# Description:
+# Parses the first occurrence of a major.minor.patch version number from a file ($1)
 gls_version() {
   local ver=
   ver="$(grep -oE "([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?" "$1" | head -n 1)"
   [[ -z $ver ]] && return 1
   echo "$ver"
   return 0
+}
+
+# default_manifest
+# Description:
+# The deafult manifest to use for the update
+default_manifest() {
+  echo "[keep]
+.gp/bash/init-project.sh
+
+[merge]
+.gitattributes
+.gitignore
+.gitpod.Dockerfile
+.gitpod.yml
+.npmrc
+
+[recommend-backup]
+starter.ini"
 }
 
 set_base_version_unknown() {
@@ -113,7 +137,7 @@ set_base_version_unknown() {
 set_base_version() {
   local ver input ec gp_dir changelog err_p1 err_p2 err_p3
   gp_dir="$(pwd)/.gp"
-  changelog="$gp_dir/CHANGELOGCACAq.md"
+  changelog="$gp_dir/CHANGELOG.md"
   err_p1="Undectable gls version"
   err_p2="Could not find required file: $changelog"
   err_p3="Could not parse version number from: $changelog"
@@ -127,7 +151,7 @@ set_base_version() {
     # regexp match only: major.minor.patch with a range 0-999 for each one and no trailing zeros
     local regexp='^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$'
     if [[ $input =~ $regexp ]]; then
-       [[ $(comp_ver_lt "$input" 1.0.0 ) == 1 ]] && echo -e "$err_p4" && abort_msg && exit 1
+       [[ $(comp_ver_lt "$input" 1.0.0 ) == 1 ]] && err_msg "$err_p4" && abort_msg && exit 1
       base_version="$input" && echo "Base gls version set by user to: $input" && return 0
     else
       echo "Invalid version: $input" && return 1
@@ -141,24 +165,126 @@ set_base_version() {
   return 0
 }
 
+parse_manifest_chunk() {
+  local chunk err_p err_1 err_2
+  err_p="parse_manifest_chunk(): parse error"
+  err_1="Exactly 2 arguments are required. Found $#"
+  err_2="Invalid manifest:\n$2"
+  err_3="Unable to find start marker: [$1]"
+
+  # BEGIN: Error handling
+
+  # Bad number of args
+  [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1" && abort_msg && exit 1
+
+  # Bad manifest
+
+
+  # Bad start marker
+  if ! echo "$2" | grep -oP "\[${1}\]"; then
+    err_msg "$err_p\n\t$err_3" && abort_msg && exit 1
+  fi
+
+   # END: Error handling
+
+  #[[ $1 =~ $valid_marker ]] && err_msg "$err_p\n\t$err_2" && abort_msg && exit 1
+  #[[ $2 =~ $valid_marker ]] && err_msg "$err_p\n\t$err_3" && abort_msg && exit 1
+  #chunk="$(awk -v _start="$1" -v _end="$2"  '/_start/{flag=1;next}/_end/{flag=0}flag' "$3")"
+  # echo "$2" | sed '1,/\['"$1"'\]/d;/foo/,$d'
+  chunk="$(echo "$2" | sed '/\['"$1"'\]/,/^END$/!d;//d')"
+
+
+echo "$chunk" | grep -v "\[$1\]"
+
+  #echo -e "parse_manifest_chunk(): TEST:\n$chunk"
+}
+
+parse_manifest_chunk2() {
+  return 0
+}
+
+
 set_target_version() {
- target_version=1.6.0
+  local regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
+  local e1="Cannot set target version"
+  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
+  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")"
 }
 
-do_yq() {
-  local min_ver=4.19.1
+download_release_json() {
+  local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
+  if ! curl --silent "$url" -o "$release_json"; then
+    err_msg "Could not download release data\n\tfrom $url"
+    return 1
+  fi
+  return 0
 }
 
-main() {
-  local e1 e2
+set_directives() {
+  local manifest file warn1 default
+  file="$(pwd)/.gp/.updater_manifest"
+  warn1="Could not find the updater manifest at $file"
+  if [[ ! -f $file ]]; then
+    default="$(default_manifest)"
+    manifest="$default"
+    warn_msg "$warn1\nUsing the default updater manifest:\n$default"
+  else
+    manifest="$(cat "$file")"
+  fi
+  # test in progress
+  parse_manifest_chunk 'keep' "$manifest"
+}
+
+download_latest() {
+  local e1 e2 url
+  e1="Cannot download/extract latest gls tarball"
+  e2="Unable to parse url from $release_json"
+  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
+
+  # parse json for tarball url
+  url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
+
+  [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
+  if ! cd "$tmp_dir"; then err_msg "$e1\n\tinternal error" && return 1; fi
+  echo "Downloading and extracting $url"
+  if ! curl -sL "$url" | tar xz --strip=1; then
+    cd ..; err_msg "$e1\n\t curl failed $url"; return 1
+  fi
+}
+
+cleanup() {
+  [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
+}
+
+update() {
+  local e1 e2 update_msg
   e1="Version mismatch"
-  if ! set_target_version; then abort_msg && exit 1; fi
+  
+  # Handle dependencies 
+  [[ ! -d $tmp_dir ]] && mkdir "$tmp_dir"
+  if ! download_release_json; then abort_msg && return 1; fi
+
+  # Derive base and target versions
+  if ! set_target_version; then abort_msg && return 1; fi
   if ! set_base_version; then set_base_version_unknown; fi
   if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
     e2="You current version v$base_version must be less than the latest version v$target_version"
-    err_msg "$e1\n\t$e2" && a_msg && exit 1
+    err_msg "$e1\n\t$e2" && a_msg && return 1
   fi
-  echo "Updating gls version $base_version to version $target_version"
+
+  # Update
+  update_msg="Updating gls version $base_version to version $target_version"
+  echo "BEGIN: $update_msg"
+  if ! set_directives; then abort_msg && return 1; fi
+  if ! download_latest; then abort_msg && return 1; fi
+
+
+  echo "SUCCESS: $update_msg"
+  return 0
+}
+
+main() {
+  if ! update; then cleanup; exit 1; fi
 }
 
 main
