@@ -31,9 +31,11 @@
 # Globals
 target_version=
 base_version=
-d_keeps=() # Files to keep
-d_merges=() # Files to merge
-d_backups=() # Files to recommend backing up and hand merging
+data_keeps=() # Files or directories to keep
+data_merges=() # Files to merge
+data_backups=() # Files to recommend backing up and hand merging
+data_deletes=() # Files or directories to delete (a directory will be rm -rf)
+
 tmp_dir="$(pwd)/.tmp_gls_update" # Temporary working directory
 release_json="$tmp_dir/latest_release.json" # Latest release data file
 
@@ -172,36 +174,23 @@ parse_manifest_chunk() {
   err_2="Invalid manifest:\n$2"
   err_3="Unable to find start marker: [$1]"
 
-  # BEGIN: Error handling
-
   # Bad number of args
   [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1" && abort_msg && exit 1
 
   # Bad manifest
-
+  # TODO verify header sections are delimited by an empty line
 
   # Bad start marker
-  if ! echo "$2" | grep -oP "\[${1}\]"; then
+  if ! echo "$2" | grep -oP --silent "\[${1}\]"; then
     err_msg "$err_p\n\t$err_3" && abort_msg && exit 1
   fi
 
-   # END: Error handling
+  chunk="$(echo "$2" | sed -n '/\['"$1"'\]/,/^$/p')"
 
-  #[[ $1 =~ $valid_marker ]] && err_msg "$err_p\n\t$err_2" && abort_msg && exit 1
-  #[[ $2 =~ $valid_marker ]] && err_msg "$err_p\n\t$err_3" && abort_msg && exit 1
-  #chunk="$(awk -v _start="$1" -v _end="$2"  '/_start/{flag=1;next}/_end/{flag=0}flag' "$3")"
-  # echo "$2" | sed '1,/\['"$1"'\]/d;/foo/,$d'
-  chunk="$(echo "$2" | sed '/\['"$1"'\]/,/^END$/!d;//d')"
+  echo "$chunk" | grep -v "\[$1\]"
 
-
-echo "$chunk" | grep -v "\[$1\]"
-
-  #echo -e "parse_manifest_chunk(): TEST:\n$chunk"
 }
 
-parse_manifest_chunk2() {
-  return 0
-}
 
 
 set_target_version() {
@@ -221,7 +210,7 @@ download_release_json() {
 }
 
 set_directives() {
-  local manifest file warn1 default
+  local chunk manifest file warn1 default
   file="$(pwd)/.gp/.updater_manifest"
   warn1="Could not find the updater manifest at $file"
   if [[ ! -f $file ]]; then
@@ -231,8 +220,44 @@ set_directives() {
   else
     manifest="$(cat "$file")"
   fi
-  # test in progress
-  parse_manifest_chunk 'keep' "$manifest"
+  
+  # Parse all chunks of the manifest into global data directive arrays
+  chunk="$(parse_manifest_chunk 'keep' "$manifest")"
+  IFS=$'\n' read -r -d '' -a data_keeps <<< "$chunk"
+  chunk="$(parse_manifest_chunk 'merge' "$manifest")"
+  IFS=$'\n' read -r -d '' -a data_merges <<< "$chunk"
+  chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
+  IFS=$'\n' read -r -d '' -a data_backups <<< "$chunk"
+  chunk="$(parse_manifest_chunk 'delete' "$manifest")"
+  IFS=$'\n' read -r -d '' -a data_deletes <<< "$chunk"
+
+  # test
+  test_directives
+
+}
+
+test_directives() {
+  echo "DIRECTIVE KEEP:"
+  for (( i=0; i<${#data_keeps[@]}; i++ ))
+  do
+    echo "$i: ${data_keeps[$i]}"
+  done
+  echo "DIRECTIVE MERGE:"
+  for (( i=0; i<${#data_merges[@]}; i++ ))
+  do
+    echo "$i: ${data_merges[$i]}"
+  done
+    echo "DIRECTIVE RECOMMEND TO BACKUP:"
+  for (( i=0; i<${#data_backups[@]}; i++ ))
+  do
+    echo "$i: ${data_backups[$i]}"
+  done
+  echo "DIRECTIVE DELETE:"
+  for (( i=0; i<${#data_deletes[@]}; i++ ))
+  do
+    echo "$i: ${data_deletes[$i]}"
+  done
+
 }
 
 download_latest() {
@@ -241,7 +266,7 @@ download_latest() {
   e2="Unable to parse url from $release_json"
   [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
 
-  # parse json for tarball url
+  # Parse tarball url from the release json
   url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
 
   [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
@@ -276,7 +301,7 @@ update() {
   update_msg="Updating gls version $base_version to version $target_version"
   echo "BEGIN: $update_msg"
   if ! set_directives; then abort_msg && return 1; fi
-  if ! download_latest; then abort_msg && return 1; fi
+  #if ! download_latest; then abort_msg && return 1; fi
 
 
   echo "SUCCESS: $update_msg"
