@@ -31,12 +31,14 @@
 # Globals
 target_version=
 base_version=
+target_dir=
 data_keeps=() # Files or directories to keep
 data_merges=() # Files to merge
 data_backups=() # Files to recommend backing up and hand merging
 data_deletes=() # Files or directories to delete (a directory will be rm -rf)
+project_root="$(pwd)"
+tmp_dir="$project_root/tmp_gls_update" # Temporary working directory
 
-tmp_dir="$(pwd)/.tmp_gls_update" # Temporary working directory
 release_json="$tmp_dir/latest_release.json" # Latest release data file
 
 name() {
@@ -53,6 +55,37 @@ err_msg() {
 
 abort_msg() {
   echo "$(name) ABORTED"
+}
+
+# is_subpath
+# Description:
+# returns 0 if ($2) is a subpath of ($1)
+# return 1 otherwise
+#
+# Usage:
+# base="/home/someusr"
+# p1="/home/someusr/myproject"
+# p2="/etc"
+# if is_subpath "$base" "$p1";then
+#    echo "$p1 is a subpath of $base"
+# else
+#   echo "$p1 is NOT a subpath of $base"
+# fi
+# # outputs: /home/someusr/myproject is a subpath of /home/someusr
+# if is_subpath "$base" "$p2";then
+#    echo "$p2 is a subpath of $base"
+# else
+#   echo "$p2 is NOT a subpath of $base"
+# fi
+# # outputs: /etc is NOT a subpath of /home/someusr
+is_subpath() {
+  if [[ $(realpath --relative-base="$1" -- "$2")  =~ ^/ ]]; then
+    # $2 is NOT subpath of $1
+    return 1
+  else
+    # $2 is subpath of $1
+    return 0
+  fi
 }
 
 # split_ver
@@ -168,36 +201,30 @@ set_base_version() {
 }
 
 parse_manifest_chunk() {
-  local chunk err_p err_1 err_2
+  local err_p err_1 err_2 chunk ec
   err_p="parse_manifest_chunk(): parse error"
+
+  # Error handling
   err_1="Exactly 2 arguments are required. Found $#"
+  [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1" && return 1
   err_2="Invalid manifest:\n$2"
-  err_3="Unable to find start marker: [$1]"
-
-  # Bad number of args
-  [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1" && abort_msg && exit 1
-
-  # Bad manifest
   # TODO verify header sections are delimited by an empty line
-
-  # Bad start marker
+  err_3="Unable to find start marker: [$1]"
   if ! echo "$2" | grep -oP --silent "\[${1}\]"; then
-    err_msg "$err_p\n\t$err_3" && abort_msg && exit 1
+    err_msg "$err_p\n\t$err_3" && return 1
   fi
 
-  chunk="$(echo "$2" | sed -n '/\['"$1"'\]/,/^$/p')"
-
-  echo "$chunk" | grep -v "\[$1\]"
-
+  # If we got this far we can parse and return success no matter what
+  echo "$2" | sed -n '/\['"$1"'\]/,/^$/p' | grep -v "\[$1\]"; return 0
 }
 
 
-
+# Sets target version and target directory
 set_target_version() {
   local regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
   local e1="Cannot set target version"
   [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
-  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")"
+  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")" && target_dir="$tmp_dir/$target_version"
 }
 
 download_release_json() {
@@ -210,9 +237,10 @@ download_release_json() {
 }
 
 set_directives() {
-  local chunk manifest file warn1 default
+  local chunk manifest file warn1 default ec
   file="$(pwd)/.gp/.updater_manifest"
   warn1="Could not find the updater manifest at $file"
+  # Handle the manifest
   if [[ ! -f $file ]]; then
     default="$(default_manifest)"
     manifest="$default"
@@ -220,61 +248,142 @@ set_directives() {
   else
     manifest="$(cat "$file")"
   fi
-  
-  # Parse all chunks of the manifest into global data directive arrays
+  # Parse files and directories to keep
   chunk="$(parse_manifest_chunk 'keep' "$manifest")"
+  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
   IFS=$'\n' read -r -d '' -a data_keeps <<< "$chunk"
+  # Parse files and directories to merge
   chunk="$(parse_manifest_chunk 'merge' "$manifest")"
+  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
   IFS=$'\n' read -r -d '' -a data_merges <<< "$chunk"
+  # Parse files and directories to recommend to backup
   chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
+  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
   IFS=$'\n' read -r -d '' -a data_backups <<< "$chunk"
+  # Parse files and directories to merge
   chunk="$(parse_manifest_chunk 'delete' "$manifest")"
+  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
   IFS=$'\n' read -r -d '' -a data_deletes <<< "$chunk"
-
-  # test
-  test_directives
-
+  # All good return success
+  return 0
 }
 
-test_directives() {
-  echo "DIRECTIVE KEEP:"
+run_directives() {
+
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE KEEP:"
+    [[ ${#data_keeps[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
   for (( i=0; i<${#data_keeps[@]}; i++ ))
   do
-    echo "$i: ${data_keeps[$i]}"
-  done
-  echo "DIRECTIVE MERGE:"
-  for (( i=0; i<${#data_merges[@]}; i++ ))
-  do
-    echo "$i: ${data_merges[$i]}"
-  done
-    echo "DIRECTIVE RECOMMEND TO BACKUP:"
-  for (( i=0; i<${#data_backups[@]}; i++ ))
-  do
-    echo "$i: ${data_backups[$i]}"
-  done
-  echo "DIRECTIVE DELETE:"
-  for (( i=0; i<${#data_deletes[@]}; i++ ))
-  do
-    echo "$i: ${data_deletes[$i]}"
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing ${data_keeps[$i]}"
+    if ! keep "${data_keeps[$i]}"; then return 1; fi
   done
 
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE MERGE:"
+    [[ ${#data_merges[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
+  for (( i=0; i<${#data_merges[@]}; i++ ))
+  do
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_merges[$i]}"
+  done
+
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE RECOMMEND TO BACKUP:"
+    [[ ${#data_backups[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
+  for (( i=0; i<${#data_backups[@]}; i++ ))
+  do
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_backups[$i]}"
+  done
+
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE DELETE:"
+    [[ ${#data_deletes[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
+  for (( i=0; i<${#data_deletes[@]}; i++ ))
+  do
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_deletes[$i]}"
+  done
 }
+
+# BEGIN: directives
+keep() {
+  local name loc err_pre e1_pre
+  name="keep()"
+  orig_loc=
+  target_loc=
+  err_pre="Failed to $name"
+  e1_pre="Could not find"
+  
+  [[ -z $1 ]] && err_msg "$err_pre\n\t Missing argument. Nothing to keep." && return 1
+
+  # It's a directory
+  if [[ $1 =~ ^\/ ]]; then
+    orig_loc="$project_root$1"
+    [[ ! -d $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre directory $orig_loc" && return 1
+    target_loc="$target_dir$1"
+
+    # Ensure that is is safe to recursively delete the directory
+    if is_subpath "$project_root" "$target_loc"; then
+      echo "Keeping original directory $orig_loc"
+      rm -rf "$target_loc" && cp -R "$orig_loc" "$target_loc"
+      return 0
+    fi
+    return 1
+  fi
+  # Otherwise it must be a file
+  orig_loc="$project_root/$1"
+  [[ ! -f $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre file $orig_loc" && return 1
+  target_loc="$target_dir/$1"
+  # Ensure that is is safe to copy the file
+  if is_subpath "$project_root" "$target_loc"; then
+    echo "Keeping original file $orig_loc"
+    cp "$orig_loc" "$target_loc"
+    return 0
+  fi
+  return 1
+}
+
+merge() {
+  return 0
+}
+
+recommend_backup() {
+  return 0
+}
+
+delete() {
+  return 0
+}
+# END: directives
 
 download_latest() {
   local e1 e2 url
   e1="Cannot download/extract latest gls tarball"
   e2="Unable to parse url from $release_json"
-  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
 
+  # Handle missing release data
+  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
   # Parse tarball url from the release json
   url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
-
+  # Handle a bad url
   [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
-  if ! cd "$tmp_dir"; then err_msg "$e1\n\tinternal error" && return 1; fi
+
+  # Move into the target working directory
+  if ! cd "$target_dir";then
+    err_msg "$e1\n\tinternal error, bad target directory: $target_dir"
+    return 1
+  fi
+  # Download
   echo "Downloading and extracting $url"
   if ! curl -sL "$url" | tar xz --strip=1; then
-    cd ..; err_msg "$e1\n\t curl failed $url"; return 1
+    err_msg "$e1\n\t curl failed $url"
+    return 1
   fi
+  # Cleanup
+  cd "$project_root" || return 1
 }
 
 cleanup() {
@@ -291,6 +400,7 @@ update() {
 
   # Derive base and target versions
   if ! set_target_version; then abort_msg && return 1; fi
+  [[ ! -d $target_dir ]] && mkdir "$target_dir"
   if ! set_base_version; then set_base_version_unknown; fi
   if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
     e2="You current version v$base_version must be less than the latest version v$target_version"
@@ -301,8 +411,8 @@ update() {
   update_msg="Updating gls version $base_version to version $target_version"
   echo "BEGIN: $update_msg"
   if ! set_directives; then abort_msg && return 1; fi
-  #if ! download_latest; then abort_msg && return 1; fi
-
+  if ! download_latest; then abort_msg && return 1; fi
+  if ! run_directives; then abort_msg && return 1; fi
 
   echo "SUCCESS: $update_msg"
   return 0
