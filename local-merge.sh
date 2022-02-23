@@ -62,7 +62,7 @@ _error_desc() {
       ;;
 
     "$_E_NO_VSCODE")
-      echo -n "no vscode binary found. Is"
+      echo -n "no vscode binary found"
       ;;
 
     "$_E_GIT_MERGE_FILE")
@@ -180,6 +180,7 @@ _handle_args() {
 _check_deps() {
   if ! git --help &>/dev/null; then return $_E_NO_GIT; fi
   if ! git merge-file --help &>/dev/null; then return $_E_GIT_CMD_FAILED; fi
+  if ! code --help &>/dev/null; then return $_E_NO_VSCODE; fi
 }
 
 ### _main ###
