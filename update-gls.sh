@@ -158,7 +158,7 @@ gls_version() {
 
 ### default_manifest ###
 # Description:
-# The deafult manifest to use for the update
+# The default manifest to use for the update
 default_manifest() {
   echo "[keep]
 .gp/bash/init-project.sh
@@ -171,7 +171,12 @@ default_manifest() {
 .npmrc
 
 [recommend-backup]
-starter.ini"
+starter.ini
+/test_directory/bar
+/foobarbaz
+
+[delete]"
+
 }
 
 ### set_base_version_unknown ###
@@ -269,6 +274,26 @@ download_release_json() {
   return 0
 }
 
+### has_directive ###
+# Description:
+# returns exit code 0 if the updater manifest has the start marker ($1)
+# return exit code 1 if the updater manifest does not contain the start marker ($1)
+# Checks the default manifest if the updater manifest file is not found
+has_directive() {
+  local file manifest
+
+  file="$(pwd)/.gp/.updater_manifest"
+  if [[ ! -f $file ]]; then
+    manifest="$(default_manifest)"
+  else
+    manifest="$(cat "$file")"
+  fi
+  if echo "$manifest" | grep -oP --silent "\[${1}\]"; then
+    return 0
+  fi
+  return 1
+}
+
 ### set_directives ###
 # Description:
 # Parses a valid .updater_manifest into global arrays of directives
@@ -284,7 +309,7 @@ set_directives() {
   if [[ ! -f $file ]]; then
     default="$(default_manifest)"
     manifest="$default"
-    warn_msg "$warn1\nUsing the default updater manifest:\n$default"
+    warn_msg "$warn1\nUsing the default updater manifest:\n$default\n"
   else
     manifest="$(cat "$file")"
   fi
@@ -301,11 +326,15 @@ set_directives() {
   chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
   ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
   IFS=$'\n' read -r -d '' -a data_backups <<< "$chunk"
-
-  chunk="$(parse_manifest_chunk 'delete' "$manifest")"
-  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-  IFS=$'\n' read -r -d '' -a data_deletes <<< "$chunk"
-
+  
+  # Optional directives are checked with the has_directive routine
+  if has_directive 'delete'; then
+    chunk="$(parse_manifest_chunk 'delete' "$manifest")"
+    ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
+    IFS=$'\n' read -r -d '' -a data_deletes <<< "$chunk"
+  else
+    echo "skipping optional directive: delete"
+  fi
   return 0
 }
 
@@ -438,7 +467,7 @@ recommend_backup() {
   e1_pre="Could not find"
   b_msg1="\nProject senstive data found"
   question="Would you like perform the backup now (y/n)?"
-  warning="Warning: Answering no (n) will most likely overwrite important project specific data.\n"
+  warning="Warning: Answering no (n) will most likely overwrite important project specific data."
   
   [[ ! -d $backups_dir ]] && err_msg "Missing the recommended backups directory" && return 1
   [[ -z $1 ]] && err_msg "$err_pre\n\t Missing argument. Nothing to recommend a backup for." && return 1
@@ -454,9 +483,9 @@ recommend_backup() {
       b_msg3="and merge the contents manually back into the project after the update has succeeded."
       msg="$b_msg1 in $orig_loc\n$b_msg2\n$b_msg3\n$warning"
 
-      # sleep 1 is required if you pipe the output of this script through grc
+      # sleep 1 is required after the echo if you pipe the output of this script through grc
       # otherwise the prompt text shows up before the echo -e "$msg"
-      echo -e "$msg" && sleep 1
+      echo -e "$msg"
 
       while true; do
         read -rp "$question" input
