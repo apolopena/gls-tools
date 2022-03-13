@@ -15,6 +15,25 @@
 # For specifics on what files are updated, replaced, left alone, etc.. see: up-manifest.yml @
 # https://github.com/apolopena/gitpod-laravel-starter/tree/main/.gp/updater-manifest.yml
 
+### supports_truecolor ###
+# Desciption:
+# returns 0 if the terminal supports truecolor and retuns 1 if not
+# Source: https://gist.github.com/XVilka/8346728
+supports_truecolor() {
+  case "$COLORTERM" in
+  truecolor|24bit) return 0 ;;
+  esac
+
+  case "$TERM" in
+  iterm           |\
+  tmux-truecolor  |\
+  linux-truecolor |\
+  xterm-truecolor |\
+  screen-truecolor) return 0 ;;
+  esac
+
+  return 1
+}
 
 # BEGIN: Globals
 
@@ -52,36 +71,146 @@ data_deletes=()
 # Latest release data downloaded from github
 release_json="$tmp_dir/latest_release.json"
 
+#testing
+c_e='\e[0m' # Reset 
+c_s_bold='\033[1m' # Bold style
+# c_1: RGB Bright Red or fallback to ANSI 256 Red (Red3)
+if supports_truecolor; then c_1="\e[38;2;255;25;38m"; else c_1='\e[38;5;160m'; fi
+c_2='\e[38;5;208m' # Bright Orange (DarkOrange)
+c_3='\e[38;5;76m' # Army Green (Chartreuse3)
+c_4='\e[38;5;147m' # Lavendar (LightSteelBlue)
+c_5='\e[38;5;213m' # Hot Pink (Orchid1)#
+# c_6: RGB Cornflower Lime or fallback to ANSI 256 Yellow3
+if supports_truecolor; then c_6="\e[38;2;206;224;102m"; else c_6='\e[38;5;148m'; fi
+c_7='\e[38;5;45m' # Turquoise (Turquoise2)
+c_8='\e[38;5;39m' # Blue (DeepSkyBlue31)
+c_9='\e[38;5;34m' # Green (Green3) 
+c_10='\e[38;5;118m' # Chartreuse (Chartreuse1)
+c_11='\e[38;5;178m' # Gold (Gold3)
+c_12='\e[38;5;184m' # Yellow3
+c_13='\e[38;5;185m' # Khaki (Khaki3)
+c_14='\e[38;5;119m' # Light Green (LightGreen)
+c_15='\e[38;5;190m' # Yellow Chartreuse (Yellow3)
+c_16='\e[38;5;154m' # Ultrabrite Green (GreenYellow)
+
+
 # END: Globals
 
 # BEGIN: functions
+
+# Set is_tty to the top level
+if [[ -t 1 ]]; then
+  is_tty() {
+    true
+  }
+else
+  is_tty() {
+    false
+  }
+fi
+
+# Quick and dirty color flag taking up the $1 spot for now
+# dont use color if the flag says so or we are not a tty (such as a pipe)
+if [[ $1 == '--no-color'|| ! -t 1 ]]; then
+  use_color() {
+    false
+  }
+else
+  use_color() {
+    true
+  }
+fi
+
+handle_colors() {
+  if use_color; then set_colors; else remove_colors; fi
+}
+
+remove_colors() {
+  c_1=;c_2=;c_3=;c_4=;c_5=;c_6=;c_7=;c_8=;c_9=;c_e=;
+  c_norm=; c_warn=; c_fail=; c_pass=; c_file=;
+}
+
+set_colors() {
+  c_norm="$c_10"
+  c_norm_b="${c_s_bold}${c_norm}"
+  c_norm_prob="$c_14"
+  c_pass="${c_s_bold}$c_16"
+  c_warn="${c_s_bold}$c_2"
+  c_warn2="${c_15}"
+  c_fail="${c_s_bold}$c_1"
+
+  c_file="$c_7"
+  c_file_name="${c_s_bold}$c_9"
+  c_url="$c_11"
+  c_uri="$c_12"
+  c_number="$c_13"
+  c_choice="$c_5"
+  c_prompt="$c_4"
+}
+
+### show_logo ##
+# Description:
+# Echoes either a plain or 256 colorized GLS logo banner
+handle_logo() {
+  if use_color; then
+  echo -e "[38;5;118m [0m[38;5;118m [0m[38;5;118m_[0m[38;5;118m_[0m[38;5;118m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m.[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;148m_[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;178m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m
+[38;5;118m [0m[38;5;118m/[0m[38;5;154m [0m[38;5;154m [0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m_[0m[38;5;154m/[0m[38;5;154m|[0m[38;5;148m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m|[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m/[0m[38;5;184m [0m[38;5;184m [0m[38;5;178m [0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m/[0m
+[38;5;154m/[0m[38;5;154m [0m[38;5;154m [0m[38;5;154m [0m[38;5;154m\[0m[38;5;154m [0m[38;5;154m [0m[38;5;154m_[0m[38;5;148m_[0m[38;5;184m_[0m[38;5;184m|[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m|[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;178m\[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m [0m[38;5;214m [0m[38;5;214m\[0m[38;5;214m [0m
+[38;5;154m\[0m[38;5;154m [0m[38;5;154m [0m[38;5;154m [0m[38;5;154m [0m[38;5;148m\[0m[38;5;184m_[0m[38;5;184m\[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m|[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m|[0m[38;5;184m_[0m[38;5;178m_[0m[38;5;214m_[0m[38;5;214m [0m[38;5;214m/[0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m\[0m
+[38;5;154m [0m[38;5;154m\[0m[38;5;148m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m [0m[38;5;184m [0m[38;5;184m|[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;184m_[0m[38;5;178m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m [0m[38;5;214m/[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m [0m[38;5;208m [0m[38;5;208m/[0m
+[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m [0m[38;5;184m\[0m[38;5;184m/[0m[38;5;184m [0m[38;5;178m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m [0m[38;5;214m\[0m[38;5;214m/[0m[38;5;214m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m\[0m[38;5;208m/[0m[38;5;208m [0m
+           [38;5;118mU[0m[38;5;154mP[0m[38;5;148mD[0m[38;5;184mA[0m[38;5;178mT[0m[38;5;214mE[0m[38;5;208mR[0m
+"
+  else
+    # shellcheck disable=SC1004 # Allow backslashes in a literal
+    echo '
+  ________.____      _________
+ /  _____/|    |    /   _____/
+/   \  ___|    |    \_____  \ 
+\    \_\  |    |___ /        \
+ \______  |_______ /_______  /
+        \/        \/       \/ 
+           UPDATER
+'
+  fi
+}
 
 ### name ###
 # Description:
 # Prints the file name of this script
 name() {
-  printf '%s' "$(basename "${BASH_SOURCE[0]}")"
+  printf '%s' "${c_file_name}$(basename "${BASH_SOURCE[0]}")${c_e}"
 }
 
 ### warn_msg ###
 # Description:
 # Echos a warning message ($1)
 warn_msg() {
-  echo -e "$(name) WARNING:\n\t$1"
+  echo 
+  #_out "$c_blue" "$(echo -e "$(name) $(_out "$c_orange" WARNING):\n\t$1")"
+  #_out "$c_blue" "$(name) " && _out "$c_orange" "WARNING:" && _out "$c_blue \n\t$1"
+  echo -e "$(name) ${c_warn}WARNING:${c_e}\n\t$1" 
 }
 
 ### err_msg ###
 # Description:
 # Echos an error message ($1)
 err_msg() {
-  echo -e "$(name) ERROR:\n\t$1"
+  echo -e "$(name) ${c_fail}ERROR:${c_e}\n\t$1"
 }
 
 ### abort_msg ###
 # Description:
 # Echos an abort message ($1) 
 abort_msg() {
-  echo "$(name) ABORTED"
+  echo -e "$(name) ${c_fail}ABORTED${c_e}"
+}
+
+### yes_no ###
+# Description:
+# Echos: (y/n) 
+yes_no() {
+  echo -e "${c_e}${c_prompt}(${c_e}${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_e}${c_prompt})${c_e}"
 }
 
 ### is_subpath ###
@@ -254,8 +383,9 @@ parse_manifest_chunk() {
 # $release_json (a valid github latest release json file)
 set_target_version() {
   local regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
-  local e1="Cannot set target version"
-  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
+  local e1="${c_norm_prob}Cannot set target version"
+  [[ ! -f $release_json ]] && err_msg "$e1\n\tMissing required file ${c_e}${c_uri}$release_json${c_e}" \
+    && return 1
   target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")" &&
   target_dir="$tmp_dir/$target_version"
 }
@@ -266,6 +396,9 @@ set_target_version() {
 # Requires Global:
 # $release_json (a valid github latest release json file)
 download_release_json() {
+
+  #return 0 # temp testing
+
   local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   if ! curl --silent "$url" -o "$release_json"; then
     err_msg "Could not download release data\n\tfrom $url"
@@ -303,13 +436,13 @@ has_directive() {
 set_directives() {
   local chunk manifest file warn1 default ec
   file="$(pwd)/.gp/.updater_manifest"
-  warn1="Could not find the updater manifest at $file"
+  warn1="${c_norm_prob} Could not find the updater manifest at ${c_e}${c_uri}$file${c_e}"
   
   # Get the manifest
   if [[ ! -f $file ]]; then
-    default="$(default_manifest)"
+    default="${c_file}$(default_manifest)${c_e}"
     manifest="$default"
-    warn_msg "$warn1\nUsing the default updater manifest:\n$default\n"
+    warn_msg "$warn1\n${c_norm_prob} Using the default updater manifest:${c_e}\n$default\n"
   else
     manifest="$(cat "$file")"
   fi
@@ -410,40 +543,44 @@ execute_directives() {
 # $target_dir
 keep() {
   local name orig_loc target_loc err_pre e1_pre
-  name="keep()"
-  err_pre="Failed to $name"
-  e1_pre="Could not find"
+  name="${c_file_name}keep()${c_e}"
+  err_pre="${c_norm_prob}Failed to ${c_e}$name"
+  e1_pre="${c_norm_prob}Could not find${c_e}"
   
-  [[ -z $1 ]] && err_msg "$err_pre\n\t Missing argument. Nothing to keep." && return 1
+  [[ -z $1 ]] && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to keep.${c_e}" && return 1
 
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
     orig_loc="$project_root$1"
-    [[ ! -d $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre directory $orig_loc" && return 1
+    [[ ! -d $orig_loc ]] \
+      && err_msg "$err_pre\n\t$e1_pre ${c_norm_prob}directory${c_e} ${c_uri}$orig_loc${c_e}" \
+      && return 1
     target_loc="$target_dir$1"
 
     # For security $target_loc must be a subpath of $project_root
     if is_subpath "$project_root" "$target_loc"; then
-      echo "Keeping original directory $orig_loc"
+      echo -e "${c_norm}Keeping original directory ${c_e}${c_uri}$orig_loc${c_e}"
       rm -rf "$target_loc" && cp -R "$orig_loc" "$target_loc"
       return 0
     fi
-    echo "$name failed. Illegal target $target_loc"
+    echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
     return 1
   fi
 
   # It's a file
   orig_loc="$project_root/$1"
-  [[ ! -f $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre file $orig_loc" && return 1
+  [[ ! -f $orig_loc ]] \
+    && err_msg "$err_pre\n\t$e1_pre${c_norm_prob} file ${c_e}${c_uri}$orig_loc${c_e}" \
+    && return 1
   target_loc="$target_dir/$1"
 
   # For security $target_loc must be a subpath of $project_root
   if is_subpath "$project_root" "$target_loc"; then
-    echo "Keeping original file $orig_loc"
+    echo -e "${c_norm}Keeping original file ${c_e}${c_uri}$orig_loc${c_e}"
     cp "$orig_loc" "$target_loc"
     return 0
   fi
-  echo "$name failed. Illegal target $target_loc"
+  echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
   return 1
 }
 
@@ -461,16 +598,17 @@ merge() {
 # $project_root
 # $backups_dir
 recommend_backup() {
-  local name orig_loc target_loc err_pre e1_pre b_msg1 b_msg2 b_msg3 msg warning question instr_file input
-  name="recommend_backup()"
-  err_pre="Failed to $name"
-  e1_pre="Could not find"
-  b_msg1="\nProject senstive data found"
-  question="Would you like perform the backup now (y/n)?"
-  warning="Warning: Answering no (n) will most likely overwrite important project specific data."
+  local name orig_loc target_loc err_pre e1_pre b_msg1 b_msg2 b_msg2b b_msg3 msg warning
+  local question instr_file input
+  name="${c_file_name}recommend_backup()${c_e}"
+  err_pre="${c_norm_prob}Failed to ${c_e}$name"
+  e1_pre="${c_norm_prob}Could not find${c_e}"
+  b_msg1="\n${c_norm}Project senstive data found"
+  question="${c_prompt}Would you like perform the backup now $(yes_no)${c_prompt}?${c_e}"
+  warning="${c_warn2}Warning: ${c_e}${c_norm}Answering no will most likely result in the loss of project specific data.${c_e}"
   
-  [[ ! -d $backups_dir ]] && err_msg "Missing the recommended backups directory" && return 1
-  [[ -z $1 ]] && err_msg "$err_pre\n\t Missing argument. Nothing to recommend a backup for." && return 1
+  [[ ! -d $backups_dir ]] && err_msg " ${c_norm_prob}Missing the recommended backups directory${c_e}" && return 1
+  [[ -z $1 ]] && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to recommend a backup for.${c_e}" && return 1
 
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
@@ -479,33 +617,34 @@ recommend_backup() {
     target_loc="$backups_dir/$(basename "$1")"
     # Proceed with the recommended backup if the path does not appear to be malicious
     if is_subpath "$project_root" "$target_loc"; then
-      b_msg2="It is recommended that you backup the directory:\n\t$orig_loc\nto\n\t$target_loc"
-      b_msg3="and merge the contents manually back into the project after the update has succeeded."
-      msg="$b_msg1 in $orig_loc\n$b_msg2\n$b_msg3\n$warning"
+      b_msg2="${c_norm}It is recommended that you backup the directory:\n\t"
+      b_msg2b="${c_e}${c_uri}$orig_loc${c_e}\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
+      b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
+      msg="$b_msg1 in ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warning"
 
-      # sleep 1 is required after the echo if you pipe the output of this script through grc
+      # sleep .2 is required after the echo if you pipe the output of this script through grc
       # otherwise the prompt text shows up before the echo -e "$msg"
-      echo -e "$msg"
+      echo -e "$msg" && sleep .2
 
       while true; do
-        read -rp "$question" input
+        read -rp "$( echo -e "$question")" input
         case $input in
-          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then echo "SUCCESS"; break; else return 1; fi;;
+          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then echo -e "${c_pass}SUCCESS${c_e}"; break; else return 1; fi;;
           [Nn]* ) return 0;;
-          * ) echo "Please answer y for yes or n for no.";;
+          * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
         esac
       done
       # Log the original location of backed up directory in a file next to the backed up directory
       instr_file="$target_loc"_original_location.txt
       if echo "$orig_loc" > "$instr_file"; then
-        echo "The original location of this directory can be found at $instr_file"
+        echo -e "${c_norm}The original location of this directory can be found at ${c_e}${c_uri}$instr_file${c_e}"
       else
-        echo "Error could not create original location file map $instr_file"
-        echo "Refer back to this log when manually merging $target_loc back into the project."
+        echo -e "${c_norm_prob}Error could not create original location file map ${c_e}${c_uri}$instr_file${c_e}"
+        echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_e}${c_uri}$target_loc${c_e}"
       fi
       return 0
     fi
-    echo "$name failed. Illegal target $target_loc"
+    echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
     return 1
   fi
   # Otherwise it must be a file
@@ -536,6 +675,10 @@ delete() {
 # $release_json
 # $target_dir
 download_latest() {
+
+  echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
+  return 0 # temp testing, must download once first though
+
   local e1 e2 url
   e1="Cannot download/extract latest gls tarball"
   e2="Unable to parse url from $release_json"
@@ -575,7 +718,7 @@ cleanup() {
 # Creates any necessary files or directories any routine might need
 # Handles errors for each routine called or action made
 update() {
-  local e1 e2 update_msg
+  local e1 e2 update_msg1 update_msg2
   e1="Version mismatch"
   
   # Handle dependencies 
@@ -597,8 +740,9 @@ update() {
   fi
 
   # Update
-  update_msg="Updating gls version $base_version to version $target_version"
-  echo "BEGIN: $update_msg"
+  update_msg1="${c_norm}Updating gitpod-laravel-starter version"
+  update_msg2="${c_number}$base_version${c_e}${c_norm} to version${c_e} ${c_number}$target_version${c_e}"
+  echo -e "${c_norm_b}BEGIN:${c_e} $update_msg1 $update_msg2"
   if ! set_directives; then abort_msg && return 1; fi
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
@@ -607,11 +751,20 @@ update() {
   return 0
 }
 
+# Internal function
+_out() {
+  local end='\e[0m'
+  if [[ -n $useColor ]]; then
+    echo -en "$1$2$end"
+  fi
+}
+
 ### main ###
 # Description:
 # Main routine
 # Calls the update routine with error handling and cleans up if necessary
 main() {
+  handle_colors; handle_logo
   if ! update; then cleanup; exit 1; fi
 }
 # END: functions
