@@ -210,7 +210,8 @@ abort_msg() {
 # Description:
 # Echos: (y/n) 
 yes_no() {
-  echo -e "${c_e}${c_prompt}(${c_e}${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_e}${c_prompt})${c_e}"
+  echo -e \
+  "${c_e}${c_prompt}(${c_e}${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_e}${c_prompt})${c_e}"
 }
 
 ### is_subpath ###
@@ -312,8 +313,10 @@ starter.ini
 # Description:
 # Sets the base version to the string: unknown
 set_base_version_unknown() {
-  local unknown_msg="The current gls version has been set to 'unknown' but is assumed to be >= 1.0.0"
-  base_version='unknown' && echo "$unknown_msg"
+  local unknown_msg1 unknown_msg1b
+  unknown_msg1="${c_norm}The current gls version has been set to '${c_e}${c_file_name}unknown${c_e}"
+  unknown_msg1b="${c_norm}' but is assumed to be ${c_e}${c_file_name}>= ${c_e}${c_number}1.0.0${c_e}"
+  base_version='unknown' && echo "$unknown_msg1$unknown_msg1b"
 }
 
 ### set_base_version ###
@@ -322,35 +325,47 @@ set_base_version_unknown() {
 # Prompts the user to manually enter a base version if no version can be derived
 # Validates the version number range x.x.x is >= 1.0.0 where x is equal to an integer between 0 and 999
 set_base_version() {
-  local ver input ec gp_dir changelog err_p1 err_p2 err_p3
+  local ver input question1 question1b ec gp_dir changelog err_p1 err_p2 err_p3 err_p4 err_p4b err_p4c
   gp_dir="$(pwd)/.gp"
   changelog="$gp_dir/CHANGELOG.md"
-  err_p1="Undectable gls version"
-  err_p2="Could not find required file: $changelog"
-  err_p3="Could not parse version number from: $changelog"
-  err_p4="Base version is too old, it must be >= 1.0.0\n\tYou will need to perform the update manaully."
+  err_p1="${c_norm_prob}Undectable gls version${c_e}"
+  err_p2="${c_norm_prob}Could not find required file: ${c_e}${c_uri}$changelog${c_e}"
+  err_p3="${c_norm_prob}Could not parse version number from: ${c_e}${c_uri}$changelog${c_e}"
+  err_p4="${c_norm_prob}Base version is too old, it must be ${c_e}"
+  err_p4b="${c_file_name}>= ${c_e}${c_number}1.0.0${c_e}"
+  err_p4c="\n\t${c_norm_prob}You will need to perform the update manually.${c_e}"
 
   # Derive base version from user input if CHANGELOG.md is not present
   if [[ ! -f $changelog ]]; then
     warn_msg "$err_p1\n\t$err_p2"
-    echo -n "Enter the gls version you are updating from (y=skip): "
-    read -r input
+    question="${c_prompt}Enter the gls version you are updating from (${c_e}"
+    question1b="${c_choice}y${c_e}${c_prompt}=skip): ${c_e}"
+    read -rp "$( echo -e "$question1 $question1b")" input
+
     [[ $input == y ]] && return 1
 
     local regexp='^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$'
 
     if [[ $input =~ $regexp ]]; then
-       [[ $(comp_ver_lt "$input" 1.0.0 ) == 1 ]] && err_msg "$err_p4" && abort_msg && exit 1
-      base_version="$input" && echo "Base gls version set by user to: $input" && return 0
+       [[ $(comp_ver_lt "$input" 1.0.0 ) == 1 ]] \
+         && err_msg "$err_p4 $err_p4b $err_p4c" \
+         && abort_msg \
+         && exit 1
+      base_version="$input" \
+      && echo -e "${c_norm}Base gls version set by user to: ${c_norm}${c_number}$input${c_e}" \
+      && return 0
     else
-      echo "Invalid version: $input" && return 1
+      echo -e "${c_norm_prob}Invalid version: ${c_e}${c_number}$input${c_e}" \
+      && return 1
     fi
   fi
 
   # Derive version from CHANGELOG.md
   ver="$(gls_version "$changelog")"
   ec=$?
-  [[ $ec == 1 ]] && err_msg "$err_p3\n\tThis file should never be altered but it was." && return 1
+  [[ $ec == 1 ]] \
+    && err_msg "$err_p3\n\t${c_norm_prob}This file should never be altered but it was.${c_e}" \
+    && return 1
   base_version="$ver"
   return 0
 }
@@ -359,14 +374,16 @@ set_base_version() {
 # Description:
 # 
 parse_manifest_chunk() {
-  local err_p err_1 chunk ec
-  err_p="parse_manifest_chunk(): parse error"
+  local err_p err_1 err_1b err_missing_marker chunk ec 
+  err_p="${c_file_name}parse_manifest_chunk():${c_e} ${c_norm_prob}parse error${c_e}"
+  err_missing_marker="${c_e}${c_file_name}[${c_e}${c_number}$1${c_e}${c_file_name}]${c_e}"
 
   # Error handling
-  err_1="Exactly 2 arguments are required. Found $#"
-  [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1" && return 1
+  err_1="${c_norm_prob}Exactly ${c_e}${c_number}2 ${c_e}"
+  err_1b="${c_norm_prob}arguments are required. Found ${c_e}${c_number}$#${c_e}"
+  [[ -z $1 || -z $2 ]] && err_msg "$err_p\n\t$err_1 $err_1b" && return 1
   # TODO verify the enitre manifest to ensure that header sections are delimited by an empty line
-  err_3="Unable to find start marker: [$1]"
+  err_3="${c_norm_prob}Unable to find start marker: ${err_missing_marker}"
   if ! echo "$2" | grep -oP --silent "\[${1}\]"; then
     err_msg "$err_p\n\t$err_3" && return 1
   fi
@@ -386,8 +403,8 @@ set_target_version() {
   local e1="${c_norm_prob}Cannot set target version"
   [[ ! -f $release_json ]] && err_msg "$e1\n\tMissing required file ${c_e}${c_uri}$release_json${c_e}" \
     && return 1
-  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")" &&
-  target_dir="$tmp_dir/$target_version"
+  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")" \
+  && target_dir="$tmp_dir/$target_version"
 }
 
 ### download_release_json ###
@@ -401,7 +418,7 @@ download_release_json() {
 
   local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   if ! curl --silent "$url" -o "$release_json"; then
-    err_msg "Could not download release data\n\tfrom $url"
+    err_msg "${c_norm_prob}Could not download release data\n\tfrom${c_e} ${c_url}$url${c_e}"
     return 1
   fi
   return 0
@@ -680,11 +697,14 @@ download_latest() {
   return 0 # temp testing, must download once first though
 
   local e1 e2 url
-  e1="Cannot download/extract latest gls tarball"
-  e2="Unable to parse url from $release_json"
+  e1="${c_norm_prob}Cannot download/extract latest gls tarball${c_e}"
+  e2="${c_norm_prob}Unable to parse url from ${c_e}${c_uri}$release_json${c_e}"
 
   # Handle missing release data
-  [[ -z $release_json ]] && err_msg "$e1/n/tMissing required file $release_json" && return 1
+  [[ -z $release_json ]] \
+    && err_msg "$e1/n/t${c_norm_prob}Missing required file ${c_e}${c_uri}$release_json${c_e}" \
+    && return 1
+
   # Parse tarball url from the release json
   url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
   # Handle a bad url
@@ -692,13 +712,13 @@ download_latest() {
 
   # Move into the target working directory
   if ! cd "$target_dir";then
-    err_msg "$e1\n\tinternal error, bad target directory: $target_dir"
+    err_msg "$e1\n\t${c_norm_prob}internal error, bad target directory: ${c_e}${c_uri}$target_dir${c_e}"
     return 1
   fi
   # Download
-  echo "Downloading and extracting $url"
+  echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}$url${c_e}"
   if ! curl -sL "$url" | tar xz --strip=1; then
-    err_msg "$e1\n\t curl failed $url"
+    err_msg "$e1\n\t ${c_norm}curl failed ${c_e}${c_url}$url${c_e}"
     return 1
   fi
   # Cleanup
@@ -718,8 +738,10 @@ cleanup() {
 # Creates any necessary files or directories any routine might need
 # Handles errors for each routine called or action made
 update() {
-  local e1 e2 update_msg1 update_msg2
-  e1="Version mismatch"
+  local e1 e2 e2b update_msg1 update_msg2 
+  local base_ver_txt="${c_number}$base_version${c_e}${c_norm}"
+  local target_ver_txt="${c_number}$base_version${c_e}${c_norm}"
+  e1="${c_norm_prob}Version mismatch${c_e}"
   
   # Handle dependencies 
   [[ ! -d $tmp_dir ]] && mkdir "$tmp_dir"
@@ -735,19 +757,20 @@ update() {
   
   # Validate base and target versions
   if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
-    e2="You current version v$base_version must be less than the latest version v$target_version"
-    err_msg "$e1\n\t$e2" && a_msg && return 1
+    e2="$c_norm_prob}Your current version v${c_e}$base_ver_txt "
+    e2b="${c_norm_prob}must be less than the latest version v${c_e}$target_ver_txt"
+    err_msg "$e1\n\t$e2$e2b" && a_msg && return 1
   fi
 
   # Update
-  update_msg1="${c_norm}Updating gitpod-laravel-starter version"
-  update_msg2="${c_number}$base_version${c_e}${c_norm} to version${c_e} ${c_number}$target_version${c_e}"
+  update_msg1="${c_norm}Updating gitpod-laravel-starter version${c_e}"
+  update_msg2="$base_ver_txt ${c_norm}to version ${c_e}$target_ver_txt"
   echo -e "${c_norm_b}BEGIN:${c_e} $update_msg1 $update_msg2"
   if ! set_directives; then abort_msg && return 1; fi
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
 
-  echo "SUCCESS: $update_msg"
+  echo "${c_pass}SUCCESS:${c_e} $update_msg1 $update_msg2"
   return 0
 }
 
