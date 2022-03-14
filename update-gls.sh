@@ -316,7 +316,7 @@ set_base_version_unknown() {
   local unknown_msg1 unknown_msg1b
   unknown_msg1="${c_norm}The current gls version has been set to '${c_e}${c_file_name}unknown${c_e}"
   unknown_msg1b="${c_norm}' but is assumed to be ${c_e}${c_file_name}>= ${c_e}${c_number}1.0.0${c_e}"
-  base_version='unknown' && echo "$unknown_msg1$unknown_msg1b"
+  base_version='unknown' && echo -e "$unknown_msg1$unknown_msg1b"
 }
 
 ### set_base_version ###
@@ -338,7 +338,7 @@ set_base_version() {
   # Derive base version from user input if CHANGELOG.md is not present
   if [[ ! -f $changelog ]]; then
     warn_msg "$err_p1\n\t$err_p2"
-    question="${c_prompt}Enter the gls version you are updating from (${c_e}"
+    question1="${c_prompt}Enter the gls version you are updating from (${c_e}"
     question1b="${c_choice}y${c_e}${c_prompt}=skip): ${c_e}"
     read -rp "$( echo -e "$question1 $question1b")" input
 
@@ -355,7 +355,7 @@ set_base_version() {
       && echo -e "${c_norm}Base gls version set by user to: ${c_norm}${c_number}$input${c_e}" \
       && return 0
     else
-      echo -e "${c_norm_prob}Invalid version: ${c_e}${c_number}$input${c_e}" \
+      warn_msg "${c_norm_prob}Invalid gls base version: ${c_e}${c_number}$input${c_e}" \
       && return 1
     fi
   fi
@@ -413,12 +413,14 @@ set_target_version() {
 # Requires Global:
 # $release_json (a valid github latest release json file)
 download_release_json() {
-
+  # TODO: handle the case where josn data is downloaded but release data is not in the file
+  # such as in the case of a json return "not found"
   #return 0 # temp testing
-
-  local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
+  
+  local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latesttt"
+  echo -e "${c_norm}Downloading release data from:\n\t${c_e}${c_url}$url${c_e}"
   if ! curl --silent "$url" -o "$release_json"; then
-    err_msg "${c_norm_prob}Could not download release data\n\tfrom${c_e} ${c_url}$url${c_e}"
+    err_msg "${c_norm_prob}Could not download release data from\n\t${c_e} ${c_url}$url${c_e}"
     return 1
   fi
   return 0
@@ -426,8 +428,8 @@ download_release_json() {
 
 ### has_directive ###
 # Description:
-# returns exit code 0 if the updater manifest has the start marker ($1)
-# return exit code 1 if the updater manifest does not contain the start marker ($1)
+# returns  0 if the updater manifest has the start marker ($1)
+# return2 1 if the updater manifest does not contain the start marker ($1)
 # Checks the default manifest if the updater manifest file is not found
 has_directive() {
   local file manifest
@@ -564,7 +566,9 @@ keep() {
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
   e1_pre="${c_norm_prob}Could not find${c_e}"
   
-  [[ -z $1 ]] && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to keep.${c_e}" && return 1
+  [[ -z $1 ]] \
+    && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to keep.${c_e}" \
+    && return 1
 
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
@@ -624,8 +628,12 @@ recommend_backup() {
   question="${c_prompt}Would you like perform the backup now $(yes_no)${c_prompt}?${c_e}"
   warning="${c_warn2}Warning: ${c_e}${c_norm}Answering no will most likely result in the loss of project specific data.${c_e}"
   
-  [[ ! -d $backups_dir ]] && err_msg " ${c_norm_prob}Missing the recommended backups directory${c_e}" && return 1
-  [[ -z $1 ]] && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to recommend a backup for.${c_e}" && return 1
+  [[ ! -d $backups_dir ]] \
+    && err_msg " ${c_norm_prob}Missing the recommended backups directory${c_e}" \
+    && return 1
+  [[ -z $1 ]] \
+    && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to recommend a backup for.${c_e}" \
+    && return 1
 
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
@@ -693,8 +701,8 @@ delete() {
 # $target_dir
 download_latest() {
 
-  echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
-  return 0 # temp testing, must download once first though
+  #echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
+  #return 0 # temp testing, must download once first though
 
   local e1 e2 url
   e1="${c_norm_prob}Cannot download/extract latest gls tarball${c_e}"
@@ -729,7 +737,8 @@ download_latest() {
 # Description:
 # Clean up after the update
 cleanup() {
-  [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
+  return 0
+  #[[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
 }
 
 ### update ###
@@ -738,19 +747,23 @@ cleanup() {
 # Creates any necessary files or directories any routine might need
 # Handles errors for each routine called or action made
 update() {
-  local e1 e2 e2b update_msg1 update_msg2 
-  local base_ver_txt="${c_number}$base_version${c_e}${c_norm}"
-  local target_ver_txt="${c_number}$base_version${c_e}${c_norm}"
+  local e1 e2 e2b update_msg1 update_msg2 base_ver_txt target_ver_txt
   e1="${c_norm_prob}Version mismatch${c_e}"
   
-  # Handle dependencies 
-  [[ ! -d $tmp_dir ]] && mkdir "$tmp_dir"
+  # Handle dependencies
+  if ! mkdir -p "$tmp_dir"; then
+    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
+    abort_msg
+    return 1
+  fi
   if ! download_release_json; then abort_msg && return 1; fi
 
   # Set base and target versions and any directories that other routines require
   if ! set_target_version; then abort_msg && return 1; fi
   [[ ! -d $target_dir ]] && mkdir "$target_dir"
   if ! set_base_version; then set_base_version_unknown; fi
+  base_ver_txt="${c_number}$base_version${c_e}${c_norm}"
+  target_ver_txt="${c_number}$target_version${c_e}${c_norm}"
   [[ $backups_dir == $(pwd) ]] &&
     backups_dir="${backups_dir}/gls_BACKUPS_$base_version" &&
     mkdir -p "$backups_dir"
@@ -759,7 +772,7 @@ update() {
   if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
     e2="$c_norm_prob}Your current version v${c_e}$base_ver_txt "
     e2b="${c_norm_prob}must be less than the latest version v${c_e}$target_ver_txt"
-    err_msg "$e1\n\t$e2$e2b" && a_msg && return 1
+    err_msg "$e1\n\t$e2$e2b" && abort_msg && return 1
   fi
 
   # Update
@@ -770,7 +783,7 @@ update() {
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
 
-  echo "${c_pass}SUCCESS:${c_e} $update_msg1 $update_msg2"
+  echo -e "${c_pass}SUCCESS:${c_e} $update_msg1 $update_msg2"
   return 0
 }
 
