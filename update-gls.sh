@@ -59,17 +59,14 @@ tmp_dir="$project_root/tmp_gls_update"
 # Files or directories to keep.
 data_keeps=()
 
-# Files to merge
-data_merges=()
-
 # Files to recommend backing up so they can be merged manually after the update succeeds
 data_backups=()
 
-# Files or directories to delete
-data_deletes=()
-
 # Latest release data downloaded from github
 release_json="$tmp_dir/latest_release.json"
+
+# Global message prefixes are declared here but set in main so they can be conditionally colorized
+note_prefix=;warn_prefix=
 
 #testing
 c_e='\e[0m' # Reset 
@@ -141,8 +138,8 @@ set_colors() {
 
   c_file="$c_7"
   c_file_name="${c_s_bold}$c_9"
-  c_url="$c_11"
-  c_uri="$c_12"
+  c_url="$c_12"
+  c_uri="$c_11"
   c_number="$c_13"
   c_choice="$c_5"
   c_prompt="$c_4"
@@ -186,9 +183,6 @@ name() {
 # Description:
 # Echos a warning message ($1)
 warn_msg() {
-  echo 
-  #_out "$c_blue" "$(echo -e "$(name) $(_out "$c_orange" WARNING):\n\t$1")"
-  #_out "$c_blue" "$(name) " && _out "$c_orange" "WARNING:" && _out "$c_blue \n\t$1"
   echo -e "$(name) ${c_warn}WARNING:${c_e}\n\t$1" 
 }
 
@@ -206,12 +200,19 @@ abort_msg() {
   echo -e "$(name) ${c_fail}ABORTED${c_e}"
 }
 
+### success_msg ###
+# Description:
+# Echos a success message ($1) 
+success_msg() {
+  echo -e "${c_pass}SUCCESS:${c_e} ${c_norm}$1${c_e}"
+}
+
 ### yes_no ###
 # Description:
 # Echos: (y/n) 
 yes_no() {
   echo -e \
-  "${c_e}${c_prompt}(${c_e}${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_e}${c_prompt})${c_e}"
+  "${c_e}${c_prompt}(${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_prompt})${c_e}"
 }
 
 ### is_subpath ###
@@ -293,19 +294,13 @@ default_manifest() {
   echo "[keep]
 .gp/bash/init-project.sh
 
-[merge]
+[recommend-backup]
+starter.ini
 .gitattributes
 .gitignore
 .gitpod.Dockerfile
 .gitpod.yml
-.npmrc
-
-[recommend-backup]
-starter.ini
-/test_directory/bar
-/foobarbaz
-
-[delete]"
+.npmrc"
 
 }
 
@@ -399,12 +394,19 @@ parse_manifest_chunk() {
 # Requires Global:
 # $release_json (a valid github latest release json file)
 set_target_version() {
-  local regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
-  local e1="${c_norm_prob}Cannot set target version"
-  [[ ! -f $release_json ]] && err_msg "$e1\n\tMissing required file ${c_e}${c_uri}$release_json${c_e}" \
-    && return 1
-  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")" \
-  && target_dir="$tmp_dir/$target_version"
+  local regexp e1 e1b e2
+  regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
+  e1="${c_norm_prob}Cannot set target version"
+  e1b="$e1\n\tMissing required file ${c_e}${c_uri}$release_json${c_e}"
+  e2="${c_norm_prob}Failed to parse target version from:${c_e}\n\t${c_uri}$release_json${c_e}"
+
+  [[ ! -f $release_json ]] && err_msg "$e1$e1b" && return 1
+  
+  target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")"
+
+  [[ -z $target_version ]] && err_msg "$e2" && return 1
+
+  target_dir="$tmp_dir/$target_version"
 }
 
 ### download_release_json ###
@@ -413,12 +415,11 @@ set_target_version() {
 # Requires Global:
 # $release_json (a valid github latest release json file)
 download_release_json() {
-  # TODO: handle the case where josn data is downloaded but release data is not in the file
-  # such as in the case of a json return "not found"
-  #return 0 # temp testing
-  
-  local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latesttt"
-  echo -e "${c_norm}Downloading release data from:\n\t${c_e}${c_url}$url${c_e}"
+  return 0 # temp testing
+  local url msg
+  url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
+  msg="${c_norm}Downloading release data"
+  echo -e "$msg from:\n\t${c_e}${c_url}$url${c_e}"
   if ! curl --silent "$url" -o "$release_json"; then
     err_msg "${c_norm_prob}Could not download release data from\n\t${c_e} ${c_url}$url${c_e}"
     return 1
@@ -467,26 +468,22 @@ set_directives() {
   fi
 
   # Parse chunks and convert them to global directive arrays
-  chunk="$(parse_manifest_chunk 'keep' "$manifest")"
-  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-  IFS=$'\n' read -r -d '' -a data_keeps <<< "$chunk"
-
-  chunk="$(parse_manifest_chunk 'merge' "$manifest")"
-  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-  IFS=$'\n' read -r -d '' -a data_merges <<< "$chunk"
-
-  chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
-  ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-  IFS=$'\n' read -r -d '' -a data_backups <<< "$chunk"
-  
-  # Optional directives are checked with the has_directive routine
-  if has_directive 'delete'; then
-    chunk="$(parse_manifest_chunk 'delete' "$manifest")"
+  if has_directive 'keep'; then
+    chunk="$(parse_manifest_chunk 'keep' "$manifest")"
     ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-    IFS=$'\n' read -r -d '' -a data_deletes <<< "$chunk"
+    IFS=$'\n' read -r -d '' -a data_keeps <<< "$chunk"
   else
-    echo "skipping optional directive: delete"
+    echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_e}${c_file}keep${c_e}"
   fi
+
+  if has_directive 'recommend-backup'; then
+    chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
+    ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
+    IFS=$'\n' read -r -d '' -a data_backups <<< "$chunk"
+  else
+    echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_e}${c_file}recommend-backup${c_e}"
+  fi
+
   return 0
 }
 
@@ -516,15 +513,6 @@ execute_directives() {
   done
 
   if [[ $1 == '--debug' ]]; then
-    echo "DIRECTIVE MERGE:"
-    [[ ${#data_merges[@]} == 0 ]] && echo -e "\tnothing to process"
-  fi
-  for (( i=0; i<${#data_merges[@]}; i++ ))
-  do
-    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_merges[$i]}"
-  done
-
-  if [[ $1 == '--debug' ]]; then
     echo "DIRECTIVE RECOMMEND TO BACKUP:"
     [[ ${#data_backups[@]} == 0 ]] && echo -e "\tnothing to process"
   fi
@@ -532,15 +520,6 @@ execute_directives() {
   do
     [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_backups[$i]}"
     if ! recommend_backup "${data_backups[$i]}"; then return 1; fi
-  done
-
-  if [[ $1 == '--debug' ]]; then
-    echo "DIRECTIVE DELETE:"
-    [[ ${#data_deletes[@]} == 0 ]] && echo -e "\tnothing to process"
-  fi
-  for (( i=0; i<${#data_deletes[@]}; i++ ))
-  do
-    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_deletes[$i]}"
   done
 }
 
@@ -558,13 +537,13 @@ execute_directives() {
 # This function will return an error if the target location is not a subpath of $project_root
 #
 # Requires Globals:
-# $project_root
-# $target_dir
+# $project_root $target_dir $note_prefix
 keep() {
-  local name orig_loc target_loc err_pre e1_pre
+  local name orig_loc target_loc err_pre e1_pre note1 note1b note1c orig_ver_text
   name="${c_file_name}keep()${c_e}"
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
   e1_pre="${c_norm_prob}Could not find${c_e}"
+  orig_ver_text="${c_number}v$base_version${c_e}"
   
   [[ -z $1 ]] \
     && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to keep.${c_e}" \
@@ -577,12 +556,18 @@ keep() {
       && err_msg "$err_pre\n\t$e1_pre ${c_norm_prob}directory${c_e} ${c_uri}$orig_loc${c_e}" \
       && return 1
     target_loc="$target_dir$1"
+    
+    # Skip keeping the directory if there are no differences
+    [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
 
     # For security $target_loc must be a subpath of $project_root
     if is_subpath "$project_root" "$target_loc"; then
-      echo -e "${c_norm}Keeping original directory ${c_e}${c_uri}$orig_loc${c_e}"
+      note1="$note_prefix ${c_file}Recursively kept original ($orig_ver_text${c_file}) directory${c_e}"
+      note1b="${c_uri}$orig_loc${c_e}\n\t${c_file}as per the directive set in the updater manifest\n\t"
+      note1c="This action will result in some of the latest changes being omitted${c_e}"
+      echo -e "${note1} ${note1b}${note1c}"
       rm -rf "$target_loc" && cp -R "$orig_loc" "$target_loc"
-      return 0
+      return $?
     fi
     echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
     return 1
@@ -595,38 +580,41 @@ keep() {
     && return 1
   target_loc="$target_dir/$1"
 
+  # Skip keeping the file if there are no differences
+  [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
+
   # For security $target_loc must be a subpath of $project_root
   if is_subpath "$project_root" "$target_loc"; then
-    echo -e "${c_norm}Keeping original file ${c_e}${c_uri}$orig_loc${c_e}"
+    note1="$note_prefix ${c_file}Kept original ($orig_ver_text${c_file}) file${c_e}"
+    note1b="${c_uri}$orig_loc${c_e}\n\t${c_file}as per the directive set in the updater manifest\n\t"
+    note1c="This action will result in some of the latest changes being omitted${c_e}"
+    if [[ $(basename "$orig_loc") == 'init-project.sh' ]]; then
+      echo -e "${c_norm}Keeping project specific file ${c_uri}$orig_loc${c_e}"
+    else
+      echo -e "${note1} ${note1b}${note1c}"
+    fi
     cp "$orig_loc" "$target_loc"
-    return 0
+    return $?
   fi
   echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
   return 1
-}
-
-### merge ###
-# Description:
-# TBD
-merge() {
-  return 0
 }
 
 ### recommend_backup ###
 # Description:
 # 
 # Requires Globals:
-# $project_root
-# $backups_dir
+# $project_root $backups_dir $warn_prefix
 recommend_backup() {
-  local name orig_loc target_loc err_pre e1_pre b_msg1 b_msg2 b_msg2b b_msg3 msg warning
-  local question instr_file input
+  local name orig_loc target_loc err_pre e1_pre msg b_msg1 b_msg2 b_msg2b b_msg3 msg warn1 warn1b cb
+  local question instr_file input decor="----------------------------------------------"
   name="${c_file_name}recommend_backup()${c_e}"
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
   e1_pre="${c_norm_prob}Could not find${c_e}"
-  b_msg1="\n${c_norm}Project senstive data found"
+  b_msg1="\n${c_file}There is probably project specific data in"
   question="${c_prompt}Would you like perform the backup now $(yes_no)${c_prompt}?${c_e}"
-  warning="${c_warn2}Warning: ${c_e}${c_norm}Answering no will most likely result in the loss of project specific data.${c_e}"
+  warn1="$warn_prefix ${c_norm}Answering no to the question below${c_e}"
+  warn1b="${c_norm}will most likely result in the loss of project specific data.${c_e}"
   
   [[ ! -d $backups_dir ]] \
     && err_msg " ${c_norm_prob}Missing the recommended backups directory${c_e}" \
@@ -635,21 +623,24 @@ recommend_backup() {
     && err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to recommend a backup for.${c_e}" \
     && return 1
 
+  target_loc="$backups_dir/$(basename "$1")"
+
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
     orig_loc="$project_root$1"
-    [[ ! -d $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre directory $orig_loc" && return 1
-    target_loc="$backups_dir/$(basename "$1")"
-    # Proceed with the recommended backup if the path does not appear to be malicious
+    [[ ! -d $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" && return 0
+
+    # Skip backing up the directory if there are no differences between the current and the latest
+    [[ -z $(diff -qr "$orig_loc" "${target_dir}${1}") ]] && return 0
+
+    # For security proceed only if the target is within the project root
     if is_subpath "$project_root" "$target_loc"; then
       b_msg2="${c_norm}It is recommended that you backup the directory:\n\t"
       b_msg2b="${c_e}${c_uri}$orig_loc${c_e}\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
       b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
-      msg="$b_msg1 in ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warning"
+      msg="$b_msg1 ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
 
-      # sleep .2 is required after the echo if you pipe the output of this script through grc
-      # otherwise the prompt text shows up before the echo -e "$msg"
-      echo -e "$msg" && sleep .2
+      echo -e "$msg"
 
       while true; do
         read -rp "$( echo -e "$question")" input
@@ -659,12 +650,14 @@ recommend_backup() {
           * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
         esac
       done
-      # Log the original location of backed up directory in a file next to the backed up directory
-      instr_file="$target_loc"_original_location.txt
-      if echo "$orig_loc" > "$instr_file"; then
-        echo -e "${c_norm}The original location of this directory can be found at ${c_e}${c_uri}$instr_file${c_e}"
+
+      # Append merge instructions for each backup to file
+      instr_file="$backups_dir/locations_map.txt"
+      msg="Merge your backed up project specific data:\n\t$target_loc\ninto\n\t$orig_loc"
+      if echo -e "${decor}\n$msg\n${decor}\n" >> "$instr_file"; then
+        echo -e "${c_norm}Merge instructions for this file can be found at ${c_e}${c_uri}$instr_file${c_e}"
       else
-        echo -e "${c_norm_prob}Error could not create original location file map ${c_e}${c_uri}$instr_file${c_e}"
+        echo -e "${c_norm_prob}Error could not create locations map file: ${c_e}${c_uri}$instr_file${c_e}"
         echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_e}${c_uri}$target_loc${c_e}"
       fi
       return 0
@@ -672,25 +665,54 @@ recommend_backup() {
     echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
     return 1
   fi
-  # Otherwise it must be a file
-  #orig_loc="$project_root/$1"
-  #[[ ! -f $orig_loc ]] && err_msg "$err_pre\n\t$e1_pre file $orig_loc" && return 1
-  #target_loc="$target_dir/$1"
-  # Proceed with the recommended backup if the path is not malicious
-  #if is_subpath "$project_root" "$target_loc"; then
-    #echo "Recommending back for file $orig_loc"
-    #cp "$orig_loc" "$target_loc"
-  # return 0
-  #fi
-  #echo "$name failed. Illegal target $target_loc"
-  #return 1
-}
 
-### delete ###
-# Description:
-# TBD
-delete() {
-  return 0
+  # It's a file
+  orig_loc="$project_root/$1"
+  [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" && return 0
+
+  # Skip backing up the file if there are no differences between the current and the latest
+  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
+
+  # EDGE CASE: If the only change in .gitpod.Dockerfile is the cache buster value then
+  # make that change in current (orig) version of the file instead of recommending the backup
+  if [[ $(diff  --strip-trailing-cr "$target_dir/$1" "$orig_loc" | grep -cE "^(>|<)") == 2 ]]; then
+    cb="$(diff "$target_dir/$1" "$orig_loc" | grep -m 1 "ENV INVALIDATE_CACHE" | cut -d"=" -f2- )"
+    if [[ $cb =~ ^[0-9]+$ ]]; then
+      sed -i "s/ENV INVALIDATE_CACHE=.*/ENV INVALIDATE_CACHE=$cb/" "$orig_loc"
+    fi
+  fi
+
+  # For security proceed only if the target is within the project root
+  if is_subpath "$project_root" "$target_loc"; then
+    b_msg2="${c_norm}It is recommended that you backup the file:\n\t"
+    b_msg2b="${c_e}${c_uri}$orig_loc${c_e}\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
+    b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
+    msg="$b_msg1 ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
+
+    echo -e "$msg"
+
+    while true; do
+      read -rp "$( echo -e "$question")" input
+      case $input in
+        [Yy]* ) if cp "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
+        [Nn]* ) return 0;;
+        * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
+      esac
+    done
+
+    # Append merge instructions for each backup to file
+    instr_file="$backups_dir/locations_map.txt"
+    msg="Merge your backed up project specific data:\n\t$target_loc\ninto\n\t$orig_loc"
+    if echo -e "${decor}\n$msg\n${decor}\n" >> "$instr_file"; then
+      echo -e "${c_norm}Merge instructions for this file can be found at ${c_e}${c_uri}$instr_file${c_e}"
+    else
+      echo -e "${c_norm_prob}Error could not create locations map file ${c_e}${c_uri}$instr_file${c_e}"
+      echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_e}${c_uri}$target_loc${c_e}"
+    fi
+    return 0
+  fi
+  echo -e "$name ${c_norm_prob}failed. Illegal target ${c_e}${c_uri}$target_loc${c_e}"
+  return 1
 }
 
 ### download_latest ###
@@ -701,35 +723,31 @@ delete() {
 # $target_dir
 download_latest() {
 
-  #echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
-  #return 0 # temp testing, must download once first though
+  echo -e "${c_norm}TESTING MOCK: Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
+  return 0 # temp testing, must download once first though
 
   local e1 e2 url
   e1="${c_norm_prob}Cannot download/extract latest gls tarball${c_e}"
   e2="${c_norm_prob}Unable to parse url from ${c_e}${c_uri}$release_json${c_e}"
 
-  # Handle missing release data
   [[ -z $release_json ]] \
     && err_msg "$e1/n/t${c_norm_prob}Missing required file ${c_e}${c_uri}$release_json${c_e}" \
     && return 1
 
-  # Parse tarball url from the release json
   url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
-  # Handle a bad url
   [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
 
-  # Move into the target working directory
   if ! cd "$target_dir";then
     err_msg "$e1\n\t${c_norm_prob}internal error, bad target directory: ${c_e}${c_uri}$target_dir${c_e}"
     return 1
   fi
-  # Download
+
   echo -e "${c_norm}Downloading and extracting ${c_e}${c_url}$url${c_e}"
   if ! curl -sL "$url" | tar xz --strip=1; then
     err_msg "$e1\n\t ${c_norm}curl failed ${c_e}${c_url}$url${c_e}"
     return 1
   fi
-  # Cleanup
+
   cd "$project_root" || return 1
 }
 
@@ -750,22 +768,24 @@ update() {
   local e1 e2 e2b update_msg1 update_msg2 base_ver_txt target_ver_txt
   e1="${c_norm_prob}Version mismatch${c_e}"
   
-  # Handle dependencies
+  # Create working directory
   if ! mkdir -p "$tmp_dir"; then
     err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
     abort_msg
     return 1
   fi
+
+  # Download release data
   if ! download_release_json; then abort_msg && return 1; fi
 
-  # Set base and target versions and any directories that other routines require
+  # Set base and target versions required global directories 
   if ! set_target_version; then abort_msg && return 1; fi
   [[ ! -d $target_dir ]] && mkdir "$target_dir"
   if ! set_base_version; then set_base_version_unknown; fi
-  base_ver_txt="${c_number}$base_version${c_e}${c_norm}"
-  target_ver_txt="${c_number}$target_version${c_e}${c_norm}"
+  base_ver_txt="${c_number}$base_version${c_e}"
+  target_ver_txt="${c_number}$target_version${c_e}"
   [[ $backups_dir == $(pwd) ]] &&
-    backups_dir="${backups_dir}/gls_BACKUPS_$base_version" &&
+    backups_dir="${backups_dir}/GLS_BACKUPS_v$base_version" &&
     mkdir -p "$backups_dir"
   
   # Validate base and target versions
@@ -775,10 +795,10 @@ update() {
     err_msg "$e1\n\t$e2$e2b" && abort_msg && return 1
   fi
 
-  # Update
-  update_msg1="${c_norm}Updating gitpod-laravel-starter version${c_e}"
-  update_msg2="$base_ver_txt ${c_norm}to version ${c_e}$target_ver_txt"
-  echo -e "${c_norm_b}BEGIN:${c_e} $update_msg1 $update_msg2"
+  # Set directives, download and extract latest release and execute directives
+  update_msg1="${c_s_bold}${c_pass}BEGIN: ${c_e}${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
+  update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
+  echo -e "$update_msg1 $update_msg2"
   if ! set_directives; then abort_msg && return 1; fi
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
@@ -787,21 +807,30 @@ update() {
   return 0
 }
 
-# Internal function
-_out() {
-  local end='\e[0m'
-  if [[ -n $useColor ]]; then
-    echo -en "$1$2$end"
-  fi
+### init ###
+# Description:
+# Validates an existing installation of gls and initializes
+# the project so the update routine can be called
+init() {
+  handle_colors
+
+  local gls e_not_installed
+  gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
+  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
+  warn_prefix="${c_warn2}Warning:${c_e}"
+  note_prefix="${c_file_name}Notice:${c_e}"
+
+  [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
+
+  handle_logo
 }
 
 ### main ###
 # Description:
 # Main routine
-# Calls the update routine with error handling and cleans up if necessary
 main() {
-  handle_colors; handle_logo
-  if ! update; then cleanup; exit 1; fi
+  if ! init; then exit 1; fi
+  if ! update; then cleanup && exit 1; fi
 }
 # END: functions
 
