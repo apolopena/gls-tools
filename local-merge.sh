@@ -15,23 +15,35 @@
 #
 # Notes:
 # Wraps git merge-file
+# Designed to be sourced into another file, or run as a standalone script or bin
 
 
 # BEGIN: Globals
 # Errors
 _E_NO_GIT=70
-_E_GIT_CMD_FAILED=72
-_E_NO_VSCODE=74
+_E_GIT_MERGE_FILE=72
+_E_NO_CODE_IDE=74
 _E_OPT_ONE_ARG_ONLY=82
 _E_THREE_ARGS_ONLY=84
 _E_ORIG_FILE_NO_EXIST=86
 _E_NEW_FILE_NO_EXIST=88
 _E_FILE_DUPE=90
 _E_ILLEGAL_TARGET_FILE=92
+_E_SAVE_FAILED=93
+_E_CLEANUP_FAILED=94
+
 # Arguments passed to this script
 script_args=("$@")
+
 # File to save the results of the merge to
 target_file=
+
+# Temp file for the merge
+_temp_merge="$(pwd)/.tmplocal-merge-result"
+
+# Ancestor file for the merge
+_temp_ancestor="$(pwd)/tmp-local-merge-ancestor"
+
 # END: Globals
 
 ### _err_msg ###
@@ -46,12 +58,39 @@ _err_msg() {
   fi
 }
 
+### _show_help ###
+# Description:
+# shows the help message
+_show_help() {
+  echo -e "\nA wrapper around git merge-file that merges two unstaged files
+Requires git, VSCode is also required to resolve any merge conflicts.
+
+Usage:
+
+  local-merge [-h | --help | <orig_file new_file target_file> | --err-desc <error_code>]
+
+  Options:
+    -h  --help    Display this help and exit
+
+    --err-desc    Pass in an error code integer and get a description of that error
+    
+    orig_file     The original file to merge with the new file.
+                  Must be the first argument.
+    new_file      The new file to merge with the original file.
+                  Must be the second argument.
+    target_file   The target file to save results of merge to.
+                  Must be the third argument.
+                  Warning: Will overwrite any file!
+  "
+}
+
 ### _error_desc ###
 # Description:
 # Echoes an error message depending on the exit code
 # Note:
 # See the screaming snake case variables prefixed with _E_ in the Globals section for the integer values
 _error_desc() {
+  local editor
   case "$1" in
     1)
       echo -n "generic"
@@ -61,8 +100,9 @@ _error_desc() {
       echo -n "no git binary found"
       ;;
 
-    "$_E_NO_VSCODE")
-      echo -n "no vscode binary found"
+    "$_E_NO_CODE_IDE")
+      if [[ -n $GITPOD_REPO_ROOT ]]; then editor="gitpod-code"; else editor="vscode"; fi
+      echo -n "no $editor binary found"
       ;;
 
     "$_E_GIT_MERGE_FILE")
@@ -98,34 +138,18 @@ _error_desc() {
       echo -e "\teither the original file (\$1), the new file (\$2)"
       ;;
 
+    "$_E_SAVE_FAILED")
+      echo -n "failed to save the result of the merge to: $target_file"
+      ;;
+
+    "$_E_CLEANUP_FAILED")
+      echo -n "cleanup failed"
+      ;;
+
     *)
       echo -n "Unknown"
       ;;
   esac
-}
-
-### _show_help ###
-# Description:
-# shows the help message
-_show_help() {
-  echo -e "\nA wrapper around git merge-file that merges two unstaged files
-Requires git, VSCode is also required to resolve any merge conflicts.
-
-Usage:
-
-  local-merge [-h | --help | <orig_file new_file target_file> | --err-desc <error_code>]
-
-  Options:
-    -h  --help    Display this help and exit
-    --err-desc    Pass in an error code integer and get a description of that errror
-    orig_file     The original file to merge with the new file.
-                  Must be the first argument.
-    new_file      The new file to merge with the original file.
-                  Must be the second argument.
-    target_file   The target file to save results of merge to.
-                  Must be the third argument.
-                  Warning: Will overwrite any file!
-  "
 }
 
 ## _handle_args ###
@@ -179,20 +203,77 @@ _handle_args() {
 # returns an error code if any required binaries or commands are not installed or functioning
 _check_deps() {
   if ! git --help &>/dev/null; then return $_E_NO_GIT; fi
-  if ! git merge-file --help &>/dev/null; then return $_E_GIT_CMD_FAILED; fi
-  if ! code --help &>/dev/null; then return $_E_NO_VSCODE; fi
+  if ! git merge-file --help &>/dev/null; then return $_E_GIT_MERGE_FILE; fi
+  if ! code --help &>/dev/null; then return $_E_NO_CODE_IDE; fi
+}
+
+__merge() {
+  local ec
+  if [[ ! -f $_temp_ancestor ]]; then
+    if ! touch "$_temp_ancestor"; then
+      _err_msg "could not create ancestor file: $_temp_ancestor" && exit 1
+    fi
+  fi
+  # Do the merge and return the results
+  # Note:
+  # any git merge-file errors will exit with a negative value, otherwise
+  # the number of merge conclicts will be returned and truncated to 127 if more than that many conflicts
+  # if the merge was clean then 0 will be returned
+  git merge-file -p "$1" "$_temp_ancestor" "$2" > "$target_file"
+  ec=$?
+  echo "$ec"
+  [[ $ec -lt 0 ]] && return $_E_GIT_MERGE_FILE
+  return $ec
+}
+
+__save() {
+  if  [[ $3 == "$1" ]]; then
+    if ! mv -f "$target_file" "$1" ; then return $_E_SAVE_FAILED; fi
+  elif [[ $3 == "$2" ]]; then
+    if ! mv -f "$target_file" "$2" ; then return $_E_SAVE_FAILED; fi
+  else
+    return 0
+  fi
+}
+
+__cleanup() {
+  return 0
+  #[[ -f $_temp_merge ]] && rm "$_temp_merge"
+  #[[ -f $_temp_ancestor ]] && rm "$_temp_ancestor"
 }
 
 ### _main ###
 # Description:
 # Main routine
 _main() {
-  local ec
+  local ec m_ec s_ec
 
   _check_deps || ec=$? && [[ $ec -ne 0 ]] && _err_msg "$(_error_desc $ec)" && exit $ec
   _handle_args "$@" || ec=$? && [[ $ec -ne 0 ]] && _err_msg "$(_error_desc $ec)" && exit $ec
-  # target_file is set, so do the merge
-  echo "target file is: $target_file"
+  echo "merging $1 with $2"
+  __merge "$@"
+  m_ec=$?
+  if [[ $m_ec -eq $_E_GIT_MERGE_FILE ]]; then
+    if ! __cleanup; then _err_msg "cleanup failed"; fi
+    _err_msg "$(_error_desc $m_ec)"
+    exit $m_ec
+
+  else
+    __save "$@" || s_ec=$? && [[ $s_ec -ne 0 ]] && _err_msg "$(_error_desc $s_ec)" && exit $s_ec
+    echo "Merge saved to: $target_file"
+    __cleanup || ec=$? && [[ $ec -ne 0 ]] && _err_msg "$(_error_desc $ec)" && exit $ec
+    if [[ $m_ec -eq 0 ]]; then
+      echo "SUCCESS: There were no merge conflicts to resolve" && __cleanup && exit
+    elif [[ $m_ec -eq 127 ]]; then
+      echo "$m_ec There are at least 127 merge conflicts to resolve."
+    else
+      echo "There are $m_ec merge conflicts to resolve."
+    fi
+  fi
+  echo "Opening $target_file in your IDE for conflict resolution now."
+  echo "Do not type into this terminal until you are finished."
+  echo "You must resolve the conflicts, save and close the file to proceed..."
+  code --wait "$target_file" || ec=$? &&  _err_msg "$(_error_desc $ec)" && exit $ec
 }
 
 _main "$@"
