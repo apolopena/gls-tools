@@ -86,7 +86,7 @@ install() {
     echo -e "$script Error: $msg from $url"
     return 1
   fi
-  echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to\n\t$(pwd)"
+  echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to $(pwd)"
 }
 
 
