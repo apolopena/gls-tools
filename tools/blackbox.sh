@@ -114,7 +114,7 @@ gls() {
     ;;
 
     *)
-      echo "Subcommand not found: ${script_args[1]}"
+      echo "gls subcommand not found: ${script_args[1]}"
     ;;
   esac
   
