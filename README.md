@@ -23,7 +23,11 @@ Bash scripted command line tools for updating, installing, uninstalling and test
 ```bash
  bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls version-list
  ```
-> Install any version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) that exists
+ > Install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
+```bash
+ bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install-latest
+ ```
+> Install any version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
  bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install 1.4.0
  ```
