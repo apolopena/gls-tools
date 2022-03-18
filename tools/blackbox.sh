@@ -22,6 +22,7 @@ github_api_url="https://api.github.com/repos/apolopena/gitpod-laravel-starter"
 
 # Set by the init routine
 declare -A tarball_urls=()
+versions=()
 
 init() {
   local version urls url ver_regex
@@ -38,7 +39,6 @@ init() {
   # If a --use-version-stub argument exists then use a hardcoded stub rather than downloading the tag data
   if ! printf '%s\n' "${script_args[@]}" | grep -Fxq -- '--use-version-stub'; then
     mapfile -t urls < <(curl $github_api_url/tags 2>&1 | grep 'tarball_url')
-    echo "${urls[@]}"
   else
     echo "Using a hardcoded version stub, version data is NOT live."
     mapfile -t urls < <(version_stub)
@@ -46,19 +46,13 @@ init() {
 
   for (( i=0; i<${#urls[@]}; i++ )); do
     version="$(echo "${urls[$i]}" | grep -oE "$ver_regex")"
+    versions[$i]="$version"
     url="$(echo "${urls[$i]}" | grep -oE 'https.*"')"
     url="${url::-1}"
     [[ $version =~ $ver_regex ]] && tarball_urls[$version]="$url"
   done
   # Uncomment to print the contents of the tarball_urls array
   #for x in "${!tarball_urls[@]}"; do printf "[%s]=%s\n" "$x" "${tarball_urls[$x]}" ; done
-}
-
-in_array() {
-  local arr match="$1"
-  shift
-  for arr; do [[ "$arr" == "$match" ]] && return 0; done
-  return 1
 }
 
 version_stub() {
@@ -79,10 +73,6 @@ version_exists() {
   return 1
 }
 
-test_version_exists() {
-  if version_exists "$1"; then echo "v$1 exists"; else echo "v$1 does not exist"; fi
-}
-
 install() {
   local msg
 
@@ -93,7 +83,7 @@ install() {
   msg="Downloading and extracting gitpod-laravel-starter release v$1"
   echo -e "$msg"
   if ! curl -sL "$url" | tar xz --strip=1; then
-    echo -e "Error: $msg from $url"
+    echo -e "$script Error: $msg from $url"
     return 1
   fi
   echo "gitpod-laravel-starter v$1 has been installed to $(pwd)"
@@ -101,10 +91,13 @@ install() {
 
 
 gls() {
-  if ! init; then echo "Internal Error: Initialization failed"; exit 1; fi
+  if ! init; then echo "$script Internal Error: Initialization failed"; exit 1; fi
   case "${script_args[1]}" in 
     'install')
-      if ! install "${script_args[2]}"; then echo "Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"; fi
+      if ! install "${script_args[2]}"; then echo "$script Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"; fi
+      ;;
+    'list-versions')
+      printf '%s\n' "${versions[@]}"
       ;;
   esac
   
@@ -118,6 +111,6 @@ if declare -f "$1" > /dev/null; then
   # call arguments verbatim
   "$@"
 else
-  echo "blackbox.sh: '$1' is not a known function name" >&2
+  echo "$script: '$1' is not a known function name" >&2
   exit 1
 fi
