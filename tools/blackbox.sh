@@ -6,7 +6,7 @@
 # blackbox.sh
 #
 # Description:
-#
+# Installer and uninstaller for gitpod-laravel-starter
 # Blackbox testing tool for installing, uninstalling and analyzing gitpod-laravel-starter projects
 #
 # Note:
@@ -99,6 +99,8 @@ gls() {
     'version-list')
       printf '%s\n' "${versions[@]}"
       ;;
+    'latest-version')
+      echo "${versions[0]}"
   esac
   
 }
