@@ -94,13 +94,29 @@ gls() {
   if ! init; then echo "$script Internal Error: Initialization failed"; exit 1; fi
   case "${script_args[1]}" in 
     'install')
-      if ! install "${script_args[2]}"; then echo "$script Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"; fi
-      ;;
-    'version-list')
-      printf '%s\n' "${versions[@]}"
-      ;;
+      if ! install "${script_args[2]}"; then 
+        echo "$script Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"
+      fi
+    ;;
+
+    'install-latest')
+      echo "foo=${versions[0]}"
+      if ! install "${versions[0]}"; then
+        echo "$script Error: failed to install latest version of gitpod-laravel-starter ${versions[0]}"
+      fi
+    ;;
+
     'latest-version')
       echo "${versions[0]}"
+    ;;
+
+    'version-list')
+      printf '%s\n' "${versions[@]}"
+    ;;
+
+    *)
+      echo "Subcommand not found: ${script_args[1]}"
+    ;;
   esac
   
 }
