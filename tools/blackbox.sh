@@ -96,7 +96,7 @@ gls() {
     'install')
       if ! install "${script_args[2]}"; then echo "$script Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"; fi
       ;;
-    'list-versions')
+    'version-list')
       printf '%s\n' "${versions[@]}"
       ;;
   esac
