@@ -100,7 +100,6 @@ gls() {
     ;;
 
     'install-latest')
-      echo "foo=${versions[0]}"
       if ! install "${versions[0]}"; then
         echo "$script Error: failed to install latest version of gitpod-laravel-starter ${versions[0]}"
       fi
