@@ -1,6 +1,6 @@
 # gls-tools  💻
 Bash scripted command line tools for updating, installing, uninstalling and testing [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
-
+#### Note: _Bash 4.0 or higher is required._ If you are using a mac you will need to [update your version of bash](https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x)
 <hr>
 
 <br />
@@ -21,13 +21,13 @@ Bash scripted command line tools for updating, installing, uninstalling and test
 ### 📜`tools/blackbox.sh`
 > List all [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) versions 
 ```bash
- bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls version-list
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls version-list
  ```
  > Install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
- bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install-latest
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install-latest
  ```
 > Install any version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
- bash <( curl -Ls https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install 1.4.0
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls install 1.4.0
  ```
