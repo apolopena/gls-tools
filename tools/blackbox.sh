@@ -82,16 +82,19 @@ install() {
   url="${tarball_urls[$1]}"
   msg="Downloading and extracting gitpod-laravel-starter release v$1"
   echo -e "$msg"
+
   if ! curl -sL "$url" | tar xz --strip=1; then
     echo -e "$script Error: $msg from $url"
     return 1
   fi
+
   echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to $(pwd)"
 }
 
 
 gls() {
   if ! init; then echo "$script Internal Error: Initialization failed"; exit 1; fi
+  
   case "${script_args[1]}" in 
     'install')
       if ! install "${script_args[2]}"; then 
