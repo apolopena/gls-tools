@@ -178,8 +178,10 @@ handle_logo() {
 ### name ###
 # Description:
 # Prints the file name of this script
+# This is hardcoded not done dynamically such as via $(basename ${BASH_SOURCE[0]}) because the
+# result is a number rather than a name when the script is ran using process substitution
 name() {
-  printf '%s' "${c_file_name}$(basename "${BASH_SOURCE[0]}")${c_e}"
+  printf '%s' "${c_file_name}update.sh${c_e}"
 }
 
 ### warn_msg ###
@@ -635,8 +637,10 @@ recommend_backup() {
     orig_loc="$project_root$1"
     [[ ! -d $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_e}" && return 0
 
-    # Skip backing up the directory if there are no differences between the current and the latest
-    [[ -z $(diff -qr "$orig_loc" "${target_dir}${1}") ]] && return 0
+    # Skip backing up the directory if the original and the target exist and 
+    # there are no differences between them
+    [[ -d $orig_loc && -d "${target_dir}${1}" ]] \
+    && [[ -z $(diff -qr "$orig_loc" "${target_dir}${1}") ]] && return 0
 
     # For security proceed only if the target is within the project root
     if is_subpath "$project_root" "$target_loc"; then
@@ -688,8 +692,10 @@ recommend_backup() {
   fi
   [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" && return 0
 
-  # Skip backing up the file if there are no differences between the current and the latest
-  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
+  # Skip backing up the files if they exist and if there are no differences between
+  # the current and the latest
+  [[ -f $orig_loc && -f "$target_dir/$1" ]] \
+  && [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
 
   # For security proceed only if the target is within the project root
   if is_subpath "$project_root" "$target_loc"; then
