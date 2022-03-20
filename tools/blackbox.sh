@@ -12,8 +12,12 @@
 # Note:
 # The script requires the first argument to be the 'gls' command and then any supported sub command
 # routine will be called.
-# Supported flags should be last after the command and sub command
-# Only long options are supported such as: --use-version-stub
+# Supported options should be last after the command and all other sub command
+# Only long options are supported which are the following:
+# --use-version-stub: stubs the tags json file 
+# --treat-as-unbuilt:
+#           Omits the moving of the below files to the .gp folder if they exist:
+#           CHANGELOG.md, README.md, LICENSE
 
 
 script="$(basename "${BASH_SOURCE[0]}")"
@@ -23,6 +27,10 @@ github_api_url="https://api.github.com/repos/apolopena/gitpod-laravel-starter"
 # Set by the init routine
 declare -A tarball_urls=()
 versions=()
+
+has_option() {
+  printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$1"
+}
 
 init() {
   local version urls url ver_regex
@@ -37,7 +45,7 @@ init() {
   # version number as the key. Assume that all releases are github tags with the pattern: vX+.X+.X+
   # where X+ is any number of digits.
   # If a --use-version-stub argument exists then use a hardcoded stub rather than downloading the tag data
-  if ! printf '%s\n' "${script_args[@]}" | grep -Fxq -- '--use-version-stub'; then
+  if ! has_option '--use-version-stub'; then
     mapfile -t urls < <(curl $github_api_url/tags 2>&1 | grep 'tarball_url')
   else
     echo "Using a hardcoded version stub, version data is NOT live."
@@ -71,6 +79,14 @@ version_stub() {
 version_exists() {
   [[ ${tarball_urls["$1"]+exists} ]] && return 0
   return 1
+}
+
+move_metafiles() {
+  [[ ! -d .gp ]] && return 0
+  for m in 'CHANGELOG.md' 'README.md' 'LICENSE'; do
+    if ! mv "$m" ".gp/$m"; then echo "Failed to move metafile $m to .gp/$m"; fi
+  done
+  return 0
 }
 
 prompt_y_n() {
@@ -115,6 +131,9 @@ install() {
     echo -e "$script Error: $msg from $url"
     return 1
   fi
+
+  # Moving the files that gitpod laravel starter would have moved if the project was already built
+  if ! has_option '--treat-as-unbuilt'; then move_metafiles; fi
 
   echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to $(pwd)"
 }
