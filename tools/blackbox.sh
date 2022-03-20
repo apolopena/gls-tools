@@ -73,6 +73,34 @@ version_exists() {
   return 1
 }
 
+prompt_y_n() {
+  local question="$1 (y/n)? "
+    while true; do
+      read -rp "$( echo -e "$question")" input
+      case $input in
+        [Yy]* ) break;;
+        [Nn]* ) return 1;;
+        * ) echo -e "Please answer y for yes or n for no.";;
+      esac
+    done
+}
+
+new_sandbox() {
+  local s='sandbox'
+
+  [[ $(basename "$(pwd)") == "$s" ]] \
+  && echo "Cannot create a new sandbox from within the sandbox" \
+  && echo "Move up a directory and run the script again" \
+  && return 1
+
+  if [[ -d $s ]]; then
+    rm -rf $s
+  fi
+  mkdir $s
+  if ! cd $s; then echo "could not cd into $(pwd)/$s" && return 1; fi
+  install "$1"
+}
+
 install() {
   local msg
 
@@ -89,6 +117,29 @@ install() {
   fi
 
   echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to $(pwd)"
+}
+
+new() {
+  [[ -z $1 ]] && echo "The new subommand requires an additional subcommand argument" && return 1
+
+  case $1 in 
+    'sandbox')
+      [[ -z $2 ]] && echo "The sandbox command requires a version argument" && return 1
+      if ! version_exists "$2"; then 
+        echo "sandbox command required a valid gitpod-laravel-starter version. Not $2"
+        echo "To see a list of valid version run: gls version-list"
+        return 1
+      fi
+      if prompt_y_n "Creating a new sandbox will delete any existing sandbox.\n\tProceed"; then
+        if new_sandbox "$2"; then return 0; fi
+      fi
+      echo "Command 'new sandbox' aborted by user"
+    ;;
+
+    *)
+      echo "unsupported new subcommand: $1"
+    ;;
+  esac
 }
 
 
@@ -114,6 +165,10 @@ gls() {
 
     'version-list')
       printf '%s\n' "${versions[@]}"
+    ;;
+
+    'new')
+      if ! new "${script_args[2]}" "${script_args[3]}" ; then echo "Error: new subcommand failed"; fi
     ;;
 
     *)
