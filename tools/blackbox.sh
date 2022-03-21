@@ -19,6 +19,7 @@
 #           Omits the moving of the below files to the .gp folder if they exist:
 #           CHANGELOG.md, README.md, LICENSE
 
+shopt -s extglob
 
 script="$(basename "${BASH_SOURCE[0]}")"
 script_args=("$@")
@@ -102,7 +103,9 @@ prompt_y_n() {
 }
 
 new_sandbox() {
-  local s='sandbox'
+  local s
+
+  if [[ -z $2 ]]; then s='sandbox'; else s="$2"; fi
 
   [[ $(basename "$(pwd)") == "$s" ]] \
   && echo "Cannot create a new sandbox from within the sandbox" \
@@ -110,10 +113,13 @@ new_sandbox() {
   && return 1
 
   if [[ -d $s ]]; then
-    rm -rf $s
+    rm -rf "$s"
   fi
-  mkdir $s
-  if ! cd $s; then echo "could not cd into $(pwd)/$s" && return 1; fi
+
+  mkdir "$s"
+
+  if ! cd "$s"; then echo "could not cd into $(pwd)/$s" && return 1; fi
+  
   install "$1"
 }
 
@@ -142,17 +148,18 @@ new() {
   [[ -z $1 ]] && echo "The new subommand requires an additional subcommand argument" && return 1
 
   case $1 in 
-    'sandbox')
-      [[ -z $2 ]] && echo "The sandbox command requires a version argument" && return 1
+    @(sandbox|control-sandbox)*)
+      [[ -z $2 ]] && echo "The $1 command requires a version argument" && return 1
       if ! version_exists "$2"; then 
-        echo "sandbox command required a valid gitpod-laravel-starter version. Not $2"
+        echo "$1 command required a valid gitpod-laravel-starter version. Not $2"
         echo "To see a list of valid version run: gls version-list"
         return 1
       fi
-      if prompt_y_n "Creating a new sandbox will delete any existing sandbox.\n\tProceed"; then
-        if new_sandbox "$2"; then return 0; fi
+      if prompt_y_n "Creating a new $1 will delete any existing $1.\n\tProceed"; then
+        [[ $1 == 'sandbox' ]] && if new_sandbox "$2"; then return 0; else return 1; fi
+        if new_sandbox "$2" "control_sandbox_v$2"; then return 0; fi
       fi
-      echo "Command 'new sandbox' aborted by user"
+      echo "Command '$1' aborted by user"
     ;;
 
     *)
