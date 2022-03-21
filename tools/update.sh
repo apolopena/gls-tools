@@ -37,6 +37,9 @@ supports_truecolor() {
 
 # BEGIN: Globals
 
+# This script arguments. Never mutate them.
+script_args=("$@")
+
 # The version to update to
 target_version=
 
@@ -224,6 +227,14 @@ yes_no() {
   "${c_e}${c_prompt}(${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_prompt})${c_e}"
 }
 
+### is_script_arg ###
+# Description:
+# returns 0 if the script arguments contain $1, returns 1 otherwise
+# Globals:
+# $script_args
+is_script_arg() {
+  printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$1"
+}
 ### is_subpath ###
 # Description:
 # returns 0 if ($2) is a subpath of ($1)
@@ -564,8 +575,8 @@ keep() {
       && return 1
     target_loc="$target_dir$1"
     
-    # Skip keeping the directory if there are no differences
-    [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
+    # Skip keeping the directory if the original and target exists and there are no differences
+    [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
 
     # For security $target_loc must be a subpath of $project_root
     if is_subpath "$project_root" "$target_loc"; then
@@ -587,8 +598,8 @@ keep() {
     && return 1
   target_loc="$target_dir/$1"
 
-  # Skip keeping the file if there are no differences
-  [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
+  # Skip keeping the file if the original and target exists and there are no differences
+  [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
 
   # For security $target_loc must be a subpath of $project_root
   if is_subpath "$project_root" "$target_loc"; then
@@ -660,7 +671,7 @@ recommend_backup() {
         esac
       done
 
-      # Append merge instructions for each backup to file
+      # Append merge instructions file for each backup made
       instr_file="$backups_dir/locations_map.txt"
       msg="Merge your backed up project specific data:\n\t$target_loc\ninto\n\t$orig_loc"
       if echo -e "${decor}\n$msg\n${decor}\n" >> "$instr_file"; then
@@ -677,6 +688,20 @@ recommend_backup() {
 
   # It's a file...
   orig_loc="$project_root/$1"
+
+  # Exit gracefully if file is specificed in the manifest but not present in the original or the latest
+  # Also output a warning if the --strict option is used.
+  echo "about to check if file to backup eixsts and abort accordingly"
+  if is_script_arg '--strict'; then
+    echo "--strict used and should be aborting the backup with a warning"
+    [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}"
+    [[ ! -f "$target_dir/$1" ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}${target_dir}/${1}${c_uri}"
+    return 0
+  else
+  echo "no strict and should be aborting the backup silenty"
+    [[ ! -f $orig_loc ]] && return 0
+    [[ ! -f "$target_dir/$1" ]] && return 0
+  fi
   
   # EDGE CASE: If the only change in .gitpod.Dockerfile is the cache buster value then
   # make that change in current (orig) version of the file instead of recommending the backup
@@ -690,12 +715,10 @@ recommend_backup() {
       return 0
     fi
   fi
-  [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" && return 0
 
-  # Skip backing up the files if they exist and if there are no differences between
+  # Skip backing up the files if there are no differences between them
   # the current and the latest
-  [[ -f $orig_loc && -f "$target_dir/$1" ]] \
-  && [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
+  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
 
   # For security proceed only if the target is within the project root
   if is_subpath "$project_root" "$target_loc"; then
