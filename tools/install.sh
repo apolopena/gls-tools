@@ -14,10 +14,21 @@
 version=
 tarball_url=
 
+url_exists() {
+  [[ -z $1 ]] && return 1
+  if ! curl --head --silent --fail "$1" &> /dev/null; then return 1; fi
+}
+
 get_deps() {
-  local url="https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/lib"
-  # shellcheck source=/dev/null
-  source <(curl -fsSL "$url/third-party/spinner.sh")
+  local url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
+  url="$url_root/third-party/spinner.sh"
+  if url_exists ""; then
+    # shellcheck source=/dev/null
+    if ! source <(curl -fsSL "$url"); then echo "Unable to source $url"; return 1; fi
+  else
+    echo "404 error at url: $url"
+    return 1
+  fi
 }
 
 spinner_task() {
@@ -43,7 +54,7 @@ test() {
 
 init() {
   local msg
-  if ! get_deps; then echo "Failed to download dependencies from $url" && return 1; fi
+  if ! get_deps; then echo "Failed to download dependencies" && return 1; fi
   msg="Downloading latest release data from github"
   if ! spinner_task "test" "testing1" "testing2" "testing3"; then return 1; fi
 }
