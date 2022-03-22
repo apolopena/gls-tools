@@ -2,5 +2,6 @@
 /test.sh
 
 # Directories
+/.gp/
 /sandbox/
 /control_sandbox*/
