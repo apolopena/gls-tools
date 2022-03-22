@@ -37,28 +37,29 @@ get_deps() {
   fi
 }
 
-spaces-to-dashes() {
-  echo "$1" | tr ' ' '-'
+encode_spinner_msg() {
+  echo "$1" | tr ' ' '@@@'
 }
 
-dashes-to-spaces() {
-  echo "$1" | tr '-' ' '
+decode_spinner_msg() {
+  echo "$1" | tr '@@@' ' '
 }
 
 # Runs any function in this script with an number of args
 # Uses a spinner to inform the user of the progress and tick while the task is performed
-# First argument to this function must be the spinner(user) message
+# First argument to this function must be the message the spinner will display. AKA the spinner message.
+# Any occurence of @@@ in a spinner message will be replaced with a single space character.
 spinner_task() {
   local e_pre msg ec command
   e_pre="Spinner task failed:"
   [[ -z $1 ]] && echo "$e_pre Missing message argument" && return 1
-  msg="$(spaces-to-dashes "$1")"
+  msg="$(encode_spinner_msg "$1")"
   [[ -z $2 ]] && echo "$e_pre Missing command argument" && return 1
   # For security only eval functions that exist in this script
   if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
   command="$2"
   shift; shift
-  start_spinner "$(dashes-to-spaces "$msg") " && eval "$command $*"
+  start_spinner "$(decode_spinner_msg "$msg") " && eval "$command $*"
   ec=$?
   [[ $ec != 0 ]] && stop_spinner 1 && return 1
   stop_spinner 0
