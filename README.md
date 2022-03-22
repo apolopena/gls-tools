@@ -18,10 +18,12 @@ Bash scripted command line tools for updating, installing, uninstalling and test
  ```
 <br />
 
-### 📜`tools/blackbox.sh`
+### 📜`tools/internal/blackbox.sh`
 > List all [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) versions 
 ```bash
- bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) gls version-list
+ bash \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/internal/blackbox.sh ) \
+ gls version-list
  ```
  > Install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
