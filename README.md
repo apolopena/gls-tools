@@ -12,10 +12,10 @@ Bash scripted command line tools for updating, installing, uninstalling and test
 ### 📜`tools/update.sh`
 
 
-> Update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
-
-> Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
-
+> Update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
+```bash
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
+ ```
 <br />
 
 ### 📜`tools/blackbox.sh`
