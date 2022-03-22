@@ -23,18 +23,34 @@ shopt -s extglob
 
 script="$(basename "${BASH_SOURCE[0]}")"
 script_args=("$@")
+long_options=()
 github_api_url="https://api.github.com/repos/apolopena/gitpod-laravel-starter"
 
 # Set by the init routine
 declare -A tarball_urls=()
 versions=()
 
-has_option() {
+has_script_arg() {
   printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$1"
 }
 
+has_option() {
+  printf '%s\n' "${long_options[@]}" | grep -Fxq -- "$1"
+}
+
+### is_long_option ###
+# Returns 0 if $1:
+# Starts with double dashes followed by any number of uppercase or lowercase letters or integers
+# optionally followed by zero or more sets of a single dash that must be accompanied 
+# by any number uppercase or lowercase letters
+# Returns 1 otherwise
+is_long_option() {
+  [[ $1 =~ ^--[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$ ]] && return 0 || return 1
+}
+
 init() {
-  local version urls url ver_regex
+  local supported_options=('--use-version-stub' '--treat-as-unbuilt')
+  local version urls url ver_regex arg
   ver_regex='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
 
   # Disable POSIX mode if enabled so we get the behavior we expect for builtins such as mapfile
@@ -42,6 +58,19 @@ init() {
     *:posix:*) set +o posix; echo "POSIX mode was disabled" ;;
   esac
   
+  # Gather options from the script arguments
+  # if it is are not a valid long option or a supported option then exit with error
+  for (( i=0; i<${#script_args[@]}; i++ )); do
+    arg="${script_args[i]}"
+    if [[ $arg =~ ^- ]]; then 
+      if ! is_long_option "$arg"; then echo "invalid long option: $arg" && return 1; fi
+      if ! printf '%s\n' "${supported_options[@]}" | grep -Fxq -- "$arg"; then
+        echo "unsupported option: $arg" && return 1
+      fi 
+      long_options[$i]="$arg"
+    fi
+    done
+
   # Populate the tarball_urls associative array with the tarball urls of all releases using the 
   # version number as the key. Assume that all releases are github tags with the pattern: vX+.X+.X+
   # where X+ is any number of digits.
@@ -52,7 +81,6 @@ init() {
     echo "Using a hardcoded version stub, version data is NOT live."
     mapfile -t urls < <(version_stub)
   fi
-
   for (( i=0; i<${#urls[@]}; i++ )); do
     version="$(echo "${urls[$i]}" | grep -oE "$ver_regex")"
     versions[$i]="$version"
@@ -145,19 +173,47 @@ install() {
 }
 
 new() {
+  local msg1 msg2 msg3="To see a list of valid gls versions run: gls version-list"
+
   [[ -z $1 ]] && echo "The new subommand requires an additional subcommand argument" && return 1
 
   case $1 in 
     @(sandbox|control-sandbox)*)
       [[ -z $2 ]] && echo "The $1 command requires a version argument" && return 1
       if ! version_exists "$2"; then 
-        echo "$1 command required a valid gitpod-laravel-starter version. Not $2"
-        echo "To see a list of valid version run: gls version-list"
+        echo "$1 command requires a valid gls version. Not $2"
+        echo "$msg3"
         return 1
       fi
       if prompt_y_n "Creating a new $1 will delete any existing $1.\n\tProceed"; then
         [[ $1 == 'sandbox' ]] && if new_sandbox "$2"; then return 0; else return 1; fi
         if new_sandbox "$2" "control_sandbox_v$2"; then return 0; fi
+      fi
+      echo "Command '$1' aborted by user"
+    ;;
+
+    'double-sandbox')
+      msg1="The $1 command requires two version arguments,"
+      msg2="\$1: sandbox version, \$2: control sandbox version"
+      [[ -z $2 || -z $3 ]] && echo -e "$msg1\n\t$msg2" && return 1
+      if is_long_option "$2"; then echo -e "$msg1\n\t$msg2" && return 1; fi
+      if is_long_option "$3"; then echo -e "$msg1\n\t$msg2" && return 1; fi
+
+      msg1="The $1 command requires a valid gls version for the sandbox. Not $2"
+      msg2="The $1 command requires a valid gls version for the control sandbox. Not $2"
+      if ! version_exists "$2"; then echo -e "$msg1\n$msg3"; return 1; fi
+      if ! version_exists "$3"; then echo -e "$msg2\n$msg3"; return 1; fi
+
+      msg1="Creating a new $1 will delete any existing sandbox and the control sandbox for v$3."
+      if prompt_y_n "$msg1\n\tProceed"; then
+        if new_sandbox "$2"; then
+          cd .. || return 1
+          if new_sandbox "$3" "control_sandbox_v$3"; then return 0; fi
+          echo "Failed to create control sandbox for v$3"
+          return 1
+        fi
+        echo "Failed to create sandbox for v$2"
+        return 1
       fi
       echo "Command '$1' aborted by user"
     ;;
@@ -194,7 +250,9 @@ gls() {
     ;;
 
     'new')
-      if ! new "${script_args[2]}" "${script_args[3]}" ; then echo "Error: new subcommand failed"; fi
+      if ! new "${script_args[2]}" "${script_args[3]}" "${script_args[4]}"; then 
+        echo "Error: new subcommand failed";
+      fi
     ;;
 
     *)
