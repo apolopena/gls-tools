@@ -65,7 +65,7 @@ spinner_task() {
 }
 
 set_release_data() {
-  local url msg release_json chunk version_regexp
+  local url msg release_json chunk version_regex
   version_regex='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
   url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
 
@@ -78,6 +78,12 @@ set_release_data() {
   latest_tarball_url="$(echo "$chunk" | grep -oE 'https.*"')"
   latest_tarball_url="${latest_tarball_url::-1}"
   latest_version="$(echo "$chunk" | grep -oE "$version_regex")"
+  #[[ -z $latest_tarball_url ]] && echo "failed to parse the latest tarball_url" && return 1
+  #[[ -z $latest_version ]] && echo "failed to parse the latest version" && return 1
+}
+
+install_latest() {
+  if ! curl -sL "$latest_tarball_url" | tar xz --strip=1; then return 1; fi
 }
 
 test() {
@@ -87,8 +93,12 @@ test() {
 init() {
   local msg
   if ! get_deps; then echo "Failed to download dependencies" && return 1; fi
+
   msg='Downloading latest release data from github'
   if ! spinner_task "$msg" "set_release_data"; then return 1; fi
+
+  msg="Downloading and extracting the latest version of gitpod-laravel-starter v$latest_version\nfrom:"
+  if ! spinner_task "$msg\n\t$latest_tarball_url\nto:\n\t$(pwd)" "install_latest"; then return 1; fi
 }
 
 main() {
