@@ -79,8 +79,6 @@ set_release_data() {
   latest_tarball_url="$(echo "$chunk" | grep -oE 'https.*"')"
   latest_tarball_url="${latest_tarball_url::-1}"
   latest_version="$(echo "$chunk" | grep -oE "$version_regex")"
-  #[[ -z $latest_tarball_url ]] && echo "failed to parse the latest tarball_url" && return 1
-  #[[ -z $latest_version ]] && echo "failed to parse the latest version" && return 1
 }
 
 install_latest() {
