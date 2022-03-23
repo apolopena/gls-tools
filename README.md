@@ -40,6 +40,11 @@ _Only use `tools/update.sh` on an empty project or a project built with Laravel.
 ```bash
  yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
+
+  > Generate a manifest for the latest version of  [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) for `install.sh` and `update.sh`
+```bash
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/manifest.sh ) 
+ ```
 <br />
 
 ## Internal tools

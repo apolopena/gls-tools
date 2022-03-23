@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# generate-manifest.sh
+# manifest.sh
 #
 # Description:
 # Generates a manifest of everything in the project root of the latest release of gitpod-laravel-starter.
