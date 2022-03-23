@@ -847,19 +847,25 @@ init() {
 ### main ###
 # Description:
 # Main routine
-# Order specific: 
-#   1. Load utils.sh functions first as it contains get_deps() which loads the rest of the dependencies.
-#   2. Load the rest of the dependencies using get_deps()
-#   3. Initialize
-#   4. Update. Clean up if the update fails
+# Order specific:
+#   1. Pre check the url for loading get_deps.sh, abort if the check fails
+#   2. Load get_deps.sh as it contains get_deps() which is used to load the rest of the dependencies
+#   3. Load the rest of the dependencies using get_deps()
+#   4. Initialize
+#   5. Update. Clean up if the update fails
 #
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script.
 main() {
-  local ec dependencies=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  local ec dependencies=('util.sh' 'color.sh' 'header.sh' 'third-party/spinner.sh')
+  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.shh"
 
+  if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
+    err_msg "Cannot load the loader" && exit 1
+  fi
   # shellcheck source=/dev/null
-  source <(curl -fsSL "https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/utils.sh" &)
+  source \
+  <(curl -fsSL "" &)
   ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $url"; exit 1; fi; wait;
 
   if ! get_deps "${dependencies[@]}"; then exit 1; fi

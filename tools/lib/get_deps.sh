@@ -3,23 +3,14 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# manifest.sh
+# get_deps.sh
 #
 # Description:
-# Utility library
+# A single function for loading and sourcing gls-tool dependencies into the calling script via curl
 # 
 # Note:
-# When adding to this file keep in mind the programming concept of 'god object' and avoid it ;) 
-# In other words only share functions that really need to be shared
-
-
-### url_exists ###
-# Description:
-# Essentially a 'dry run' for curl. Returns 1 if the url ($1) is a 404. Returns 0 otherwise.
-url_exists() {
-  [[ -z $1 ]] && echo "Internal error: No url argument" && return 1
-  if ! curl --head --silent --fail "$1" &> /dev/null; then return 1; fi
-}
+# Only share functions from this script that really need to be shared
+# Avoid the 'god object' even though the 'utils' pattern this script uses encourages it ;)
 
 ### get_deps ###
 # Description:
@@ -29,9 +20,10 @@ url_exists() {
 #    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
 #
 # Note:
-# Requires at least one argument
-# Echos a 404 error message if the URL does not exist
-# Be aware not to accidentally source anything that will overwrite this script declarations
+# Requires at least one argument.
+# Dependencies will be loaded in the order of the arguments given.
+# Echos a 404 error message if the URL does not exist.
+# Be aware not to accidentally source anything that will overwrite calling script's declarations.
 get_deps() {
   local deps=("$@")
   local i ec url base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
@@ -39,7 +31,7 @@ get_deps() {
 
   for i in "${deps[@]}"; do
     url="${base_url}/$i"
-    if url_exists "$url"; then
+     if curl --head --silent --fail "$url" &> /dev/null; then
       # shellcheck source=/dev/null
       source <(curl -fsSL "$url" &)
       ec=$?
@@ -51,3 +43,4 @@ get_deps() {
   fi
   done
 }
+

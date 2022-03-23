@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# colors.sh
+# color.sh
 #
 # Description:
 # Barebones, opinionated color support for shellscripts.

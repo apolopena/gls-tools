@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# headers.sh
+# header.sh
 #
 # Requires:
 # Bash version >= 4
