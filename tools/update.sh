@@ -62,13 +62,7 @@ c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 # BEGIN: functions
 
-### url_exists ###
-# Description:
-# Essentially a 'dry run' for curl. Returns 1 if the url ($1) is a 404. Returns 0 otherwise.
-url_exists() {
-  [[ -z $1 ]] && echo "Internal error: No url argument" && return 1
-  if ! curl --head --silent --fail "$1" &> /dev/null; then return 1; fi
-}
+
 
 ### get_deps ###
 # Description:
@@ -83,12 +77,11 @@ url_exists() {
 # Be aware not to accidentally source anything that will overwrite this script declarations
 get_deps() {
   local deps=("$@")
-  local i ec url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  
+  local i ec url base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
   [[ $# -eq 0 ]] && echo "get_deps() failed: at least one argument is required" && return 1
 
   for i in "${deps[@]}"; do
-    url="${url_root}/$i"
+    url="${base_url}/$i"
     if url_exists "$url"; then
       # shellcheck source=/dev/null
       source <(curl -fsSL "$url" &)
@@ -854,8 +847,21 @@ init() {
 ### main ###
 # Description:
 # Main routine
+# Order specific: 
+#   1. Load utils.sh functions first as it contains get_deps() which loads the rest of the dependencies.
+#   2. Load the rest of the dependencies using get_deps()
+#   3. Initialize
+#   4. Update. Clean up if the update fails
+#
+# Note:
+# Dependency loading is synchronous and happens on every invocation of the script.
 main() {
-  local dependencies=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  local ec dependencies=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+
+  # shellcheck source=/dev/null
+  source <(curl -fsSL "https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/utils.sh" &)
+  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $url"; return 1; fi; wait;
+
   if ! get_deps "${dependencies[@]}"; then exit 1; fi
   if ! init; then exit 1; fi
   if ! update; then cleanup && exit 1; fi
