@@ -72,15 +72,21 @@ url_exists() {
 
 ### get_deps ###
 # Description:
-# Synchronously downloads dependencies (via curl) into memory and sources them.
-# Returns 0 if all dependencies are downloaded and sourced
+# Synchronously downloads dependencies ($@) via curl into memory and sources them into the calling script.
+# Returns 0 if all dependencies are downloaded and sourced, return 1 otherwise.
+# All dependencies pass in will use a base URL of:
+#    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
 #
 # Note:
+# Requires at least one argument
+# Echos a 404 error message if the URL does not exist
 # Be aware not to accidentally source anything that will overwrite this script declarations
 get_deps() {
-  local deps=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  local deps=("$@")
   local i ec url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
   
+  [[ $# -eq 0 ]] && echo "get_deps() failed: at least one argument is required" && return 1
+
   for i in "${deps[@]}"; do
     url="${url_root}/$i"
     if url_exists "$url"; then
@@ -849,7 +855,8 @@ init() {
 # Description:
 # Main routine
 main() {
-  if ! get_deps; then exit 1; fi
+  local dependencies=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  if ! get_deps "${dependencies[@]}"; then exit 1; fi
   if ! init; then exit 1; fi
   if ! update; then cleanup && exit 1; fi
 }
