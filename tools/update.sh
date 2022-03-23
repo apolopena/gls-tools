@@ -79,9 +79,9 @@ url_exists() {
 # Be aware not to accidentally source anything that will overwrite this script declarations
 get_deps() {
   local i deps url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  deps=(colors.sh headers.sh third-party/spinner.sh)
+  deps=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
   for i in "${deps[@]}"; do
-    url="${url_root}/${deps[$i]}"
+    url="${url_root}/$i"
     if url_exists "$url"; then
       # shellcheck source=/dev/null
       if ! source <(curl -fsSL "$url"); then echo "Unable to source $url"; return 1; fi
