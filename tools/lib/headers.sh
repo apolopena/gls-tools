@@ -81,13 +81,3 @@ gls_header() {
 
   echo -e "$header\n$footer\n"
 }
-
-main() {
-  if [[ -z $1 || $1 != 'installer' && $1 != 'uninstaller' && $1 != 'updater' ]]; then
-    gls_header
-  else
-    gls_header "$1"
-  fi
-}
-
-main "$@"
