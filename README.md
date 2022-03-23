@@ -3,6 +3,8 @@ Bash scripted command line tools for updating, installing, uninstalling and test
 
 All `gls-tools` scripts should be executed through bash via a `curl` process substitution.
 
+NONE OF THESE TOOLS ARE READY FOR PUBLIC USE. THIS LINE WILL BE REMOVED PRIOR TO THE INITIAL RELEASE.
+
 If you would like to use `wget` or `fetch` to execute `gls-tools` scripts you can but the implemenation for that is for that is left up to you.
 #### Note: _Bash 4.0 or higher is required._ If you run these scripts outside of Gitpod and you are using a mac you will need to [update your version of bash](https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x)
 <hr>
