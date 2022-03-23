@@ -72,14 +72,15 @@ url_exists() {
 
 ### get_deps ###
 # Description:
-# Downloads dependencies (via curl) into memory and sources them.
+# Synchronously downloads dependencies (via curl) into memory and sources them.
 # Returns 0 if all dependencies are downloaded and sourced
 #
 # Note:
 # Be aware not to accidentally source anything that will overwrite this script declarations
 get_deps() {
-  local i ec deps url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  deps=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  local deps=('colors.sh' 'headers.sh' 'third-party/spinner.sh')
+  local i ec url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
+  
   for i in "${deps[@]}"; do
     url="${url_root}/$i"
     if url_exists "$url"; then
