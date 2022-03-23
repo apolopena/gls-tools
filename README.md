@@ -36,7 +36,7 @@ _Only use `tools/update.sh` on an empty project or a project built with Laravel.
  bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
  ```
 
- > Forceupdate a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) with minimal interactivity. Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
+ > Force update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) with minimal interactivity. Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
 ```bash
  yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
  ```
