@@ -858,7 +858,7 @@ init() {
 # Dependency loading is synchronous and happens on every invocation of the script.
 main() {
   local ec dependencies=('util.sh' 'color.sh' 'header.sh' 'third-party/spinner.sh')
-  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.shh"
+  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.sh"
 
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
     err_msg "Cannot load the loader" && exit 1
