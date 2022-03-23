@@ -14,25 +14,6 @@
 # For specifics on what files are updated, replaced, left alone, etc.. see: up-manifest.yml @
 # https://github.com/apolopena/gitpod-laravel-starter/tree/main/.gp/updater-manifest.yml
 
-### supports_truecolor ###
-# Desciption:
-# returns 0 if the terminal supports truecolor and retuns 1 if not
-# Source: https://gist.github.com/XVilka/8346728
-supports_truecolor() {
-  case "$COLORTERM" in
-  truecolor|24bit) return 0 ;;
-  esac
-
-  case "$TERM" in
-  iterm           |\
-  tmux-truecolor  |\
-  linux-truecolor |\
-  xterm-truecolor |\
-  screen-truecolor) return 0 ;;
-  esac
-
-  return 1
-}
 
 # BEGIN: Globals
 
@@ -73,81 +54,42 @@ gp_df_only_cache_buster_changed=no
 # Global message prefixes are declared here but set in main so they can be conditionally colorized
 note_prefix=;warn_prefix=
 
-#testing
-c_e='\e[0m' # Reset 
-c_s_bold='\033[1m' # Bold style
-# c_1: RGB Bright Red or fallback to ANSI 256 Red (Red3)
-if supports_truecolor; then c_1="\e[38;2;255;25;38m"; else c_1='\e[38;5;160m'; fi
-c_2='\e[38;5;208m' # Bright Orange (DarkOrange)
-c_3='\e[38;5;76m' # Army Green (Chartreuse3)
-c_4='\e[38;5;147m' # Lavendar (LightSteelBlue)
-c_5='\e[38;5;213m' # Hot Pink (Orchid1)#
-# c_6: RGB Cornflower Lime or fallback to ANSI 256 Yellow3
-if supports_truecolor; then c_6="\e[38;2;206;224;102m"; else c_6='\e[38;5;148m'; fi
-c_7='\e[38;5;45m' # Turquoise (Turquoise2)
-c_8='\e[38;5;39m' # Blue (DeepSkyBlue31)
-c_9='\e[38;5;34m' # Green (Green3) 
-c_10='\e[38;5;118m' # Chartreuse (Chartreuse1)
-c_11='\e[38;5;178m' # Gold (Gold3)
-c_12='\e[38;5;184m' # Yellow3
-c_13='\e[38;5;185m' # Khaki (Khaki3)
-c_14='\e[38;5;119m' # Light Green (LightGreen)
-c_15='\e[38;5;190m' # Yellow Chartreuse (Yellow3)
-c_16='\e[38;5;154m' # Ultrabrite Green (GreenYellow)
-
+# Keep shellchack happy by predefining the colors set by lib/colors.sh
+c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_warn2=; c_fail=; c_file=;
+c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 # END: Globals
 
 # BEGIN: functions
 
-# Set is_tty to the top level
-if [[ -t 1 ]]; then
-  is_tty() {
-    true
-  }
-else
-  is_tty() {
-    false
-  }
-fi
-
-# Quick and dirty color flag taking up the $1 spot for now
-# dont use color if the flag says so or we are not a tty (such as a pipe)
-if [[ $1 == '--no-color'|| ! -t 1 ]]; then
-  use_color() {
-    false
-  }
-else
-  use_color() {
-    true
-  }
-fi
-
-handle_colors() {
-  if use_color; then set_colors; else remove_colors; fi
+### url_exists ###
+# Description:
+# Essentially a 'dry run' for curl. Returns 1 if the url ($1) is a 404. Returns 0 otherwise.
+url_exists() {
+  [[ -z $1 ]] && echo "Internal error: No url argument" && return 1
+  if ! curl --head --silent --fail "$1" &> /dev/null; then return 1; fi
 }
 
-remove_colors() {
-  c_1=;c_2=;c_3=;c_4=;c_5=;c_6=;c_7=;c_8=;c_9=;c_e=;
-  c_norm=; c_warn=; c_fail=; c_pass=; c_file=;
-}
-
-set_colors() {
-  c_norm="$c_10"
-  c_norm_b="${c_s_bold}${c_norm}"
-  c_norm_prob="$c_14"
-  c_pass="${c_s_bold}$c_16"
-  c_warn="${c_s_bold}$c_2"
-  c_warn2="${c_15}"
-  c_fail="${c_s_bold}$c_1"
-
-  c_file="$c_7"
-  c_file_name="${c_s_bold}$c_9"
-  c_url="$c_12"
-  c_uri="$c_11"
-  c_number="$c_13"
-  c_choice="$c_5"
-  c_prompt="$c_4"
+### get_deps ###
+# Description:
+# Downloads dependencies (via curl) into memory and sources them.
+# Returns 0 if all dependencies are downloaded and sourced
+#
+# Note:
+# Be aware not to accidentally source anything that will overwrite this script declarations
+get_deps() {
+  local i deps url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
+  deps=(colors.sh third-party/spinner.sh)
+  for i in "${deps[@]}"; do
+    url="${url_root}/${deps[$1]}"
+    if url_exists "$url"; then
+      # shellcheck source=/dev/null
+      if ! source <(curl -fsSL "$url"); then echo "Unable to source $url"; return 1; fi
+    else
+      echo "404 error at url: $url"
+      return 1
+  fi
+  done
 }
 
 ### show_logo ##
@@ -690,14 +632,12 @@ recommend_backup() {
 
   # Exit gracefully if file is specificed in the manifest but not present in the original or the latest
   # Also output a warning if the --strict option is used.
-  echo "about to check if file to backup eixsts and abort accordingly"
   if is_script_arg '--strict'; then
     echo "--strict used and should be aborting the backup with a warning"
     [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}"
     [[ ! -f "$target_dir/$1" ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}${target_dir}/${1}${c_uri}"
     return 0
   else
-  echo "no strict and should be aborting the backup silenty"
     [[ ! -f $orig_loc ]] && return 0
     [[ ! -f "$target_dir/$1" ]] && return 0
   fi
@@ -932,6 +872,7 @@ init() {
 # Description:
 # Main routine
 main() {
+  if ! get_deps; then exit 1; fi
   if ! init; then exit 1; fi
   if ! update; then cleanup && exit 1; fi
 }
