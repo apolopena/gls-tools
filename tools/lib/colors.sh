@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034 # Ignore all unused variables
 #
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
@@ -17,8 +18,25 @@
 # if ! init; then exit 1; fi
 # echo -e "${c_pass}SUCCESS: ${c_norm}colors.sh implemented${c_e}"
 
-# shellcheck disable=SC2034 # Ignore all unused variables
 
+### supports_truecolor ###
+# Description:
+# returns 0 if the terminal supports truecolor and retuns 1 otherwise
+supports_truecolor() {
+  case "$COLORTERM" in
+  truecolor|24bit) return 0 ;;
+  esac
+
+  case "$TERM" in
+  iterm           |\
+  tmux-truecolor  |\
+  linux-truecolor |\
+  xterm-truecolor |\
+  screen-truecolor) return 0 ;;
+  esac
+
+  return 1
+}
 
 # BEGIN: Globals
 
@@ -59,28 +77,9 @@ else
   }
 fi
 
-### supports_truecolor ###
-# Desciption:
-# returns 0 if the terminal supports truecolor and retuns 1 otherwise
-supports_truecolor() {
-  case "$COLORTERM" in
-  truecolor|24bit) return 0 ;;
-  esac
-
-  case "$TERM" in
-  iterm           |\
-  tmux-truecolor  |\
-  linux-truecolor |\
-  xterm-truecolor |\
-  screen-truecolor) return 0 ;;
-  esac
-
-  return 1
-}
-
 ###  ###
 # Description:
-#
+# Sets the global colors
 set_colors() {
   c_norm="$c_10"
   c_norm_b="${c_s_bold}${c_norm}"
