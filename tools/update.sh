@@ -860,7 +860,7 @@ main() {
 
   # shellcheck source=/dev/null
   source <(curl -fsSL "https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/utils.sh" &)
-  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $url"; return 1; fi; wait;
+  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $url"; exit 1; fi; wait;
 
   if ! get_deps "${dependencies[@]}"; then exit 1; fi
   if ! init; then exit 1; fi
