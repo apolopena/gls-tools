@@ -87,7 +87,6 @@ get_deps() {
       source <(curl -fsSL "$url" &)
       ec=$?
       if [[ $ec != 0 ]] ; then echo "Unable to source $url"; return 1; fi
-      echo "DEBUG: $url was sourced as a dependency"
       wait;
     else
       echo "404 error at url: $url"
