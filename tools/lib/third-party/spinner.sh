@@ -2,7 +2,7 @@
 # shellcheck disable=2034,2086,2059,2004
 
 # Author: Tasos Latsas
-# Modified by: Apolo Pena
+# Modified and enhanced with spinner_task() by: Apolo Pena
 # Original repository: https://github.com/tlatsas/bash-spinner
 
 # spinner.sh
@@ -126,7 +126,7 @@ function spinner_task() {
   #if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
   command="$2"
   shift; shift
-  start_spinner "$(decode_spinner_msg "$msg") " && eval "$command $*"
+  start_spinner "$(decode_spinner_msg "$msg") " && ("$command" "$@")
   ec=$?
   [[ $ec != 0 ]] && stop_spinner 1 && return 1
   stop_spinner 0
