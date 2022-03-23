@@ -63,12 +63,27 @@ These scripts are generally used for internal purposes and testing but you are w
  > Install the latest release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
  bash \
- <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/blackbox.sh ) \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/internal/blackbox.sh ) \
  gls install-latest
  ```
+
 > Install any release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
  bash \
- <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/blackbox.sh ) \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/internal/blackbox.sh ) \
  gls install 1.4.0
+ ```
+
+ > Create a sandbox to test with by installing any release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) into a directory called `sandbox`.
+```bash
+ bash \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/internal/blackbox.sh ) \
+ gls new sandbox 1.4.0
+ ```
+ 
+ > Create a 'double sandbox' to test with by installing any release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) into a directory named `sandbox` and any release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) into a directory called `control_sandbox_vX.X.X` where `X.X.X` is the second version number argument.
+```bash
+ bash \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/internal/blackbox.sh ) \
+ gls new double-sandbox 1.4.0 1.5.0
  ```
