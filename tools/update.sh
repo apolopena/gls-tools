@@ -833,8 +833,8 @@ main() {
   fi
   # shellcheck source=/dev/null
   source \
-  <(curl -fsSL "" &)
-  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $url"; exit 1; fi; wait;
+  <(curl -fsSL "$get_deps_url" &)
+  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $get_deps_url"; exit 1; fi; wait;
 
   if ! get_deps "${dependencies[@]}"; then exit 1; fi
   if ! init; then exit 1; fi
