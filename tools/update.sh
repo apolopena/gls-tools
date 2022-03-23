@@ -63,38 +63,6 @@ c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 # BEGIN: functions
 
 
-
-### get_deps ###
-# Description:
-# Synchronously downloads dependencies ($@) via curl into memory and sources them into the calling script.
-# Returns 0 if all dependencies are downloaded and sourced, return 1 otherwise.
-# All dependencies pass in will use a base URL of:
-#    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
-#
-# Note:
-# Requires at least one argument
-# Echos a 404 error message if the URL does not exist
-# Be aware not to accidentally source anything that will overwrite this script declarations
-get_deps() {
-  local deps=("$@")
-  local i ec url base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  [[ $# -eq 0 ]] && echo "get_deps() failed: at least one argument is required" && return 1
-
-  for i in "${deps[@]}"; do
-    url="${base_url}/$i"
-    if url_exists "$url"; then
-      # shellcheck source=/dev/null
-      source <(curl -fsSL "$url" &)
-      ec=$?
-      if [[ $ec != 0 ]] ; then echo "Unable to source $url"; return 1; fi
-      wait;
-    else
-      echo "404 error at url: $url"
-      return 1
-  fi
-  done
-}
-
 ### name ###
 # Description:
 # Prints the file name of this script
