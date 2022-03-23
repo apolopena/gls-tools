@@ -85,6 +85,7 @@ get_deps() {
     if url_exists "$url"; then
       # shellcheck source=/dev/null
       if ! source <(curl -fsSL "$url"); then echo "Unable to source $url"; return 1; fi
+      echo "DEBUG: $url was sourced as a dependency"
     else
       echo "404 error at url: $url"
       return 1
