@@ -323,13 +323,13 @@ download_release_json() {
   local url msg
   url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   msg="${c_norm}Downloading release data"
-  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curl' --silent "$url" -o "$release_json"
+  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curly' --silent "$url" -o "$release_json"
 }
 
 ### has_directive ###
 # Description:
 # returns  0 if the updater manifest has the start marker ($1)
-# return2 1 if the updater manifest does not contain the start marker ($1)
+# returns 1 if the updater manifest does not contain the start marker ($1)
 # Checks the default manifest if the updater manifest file is not found
 has_directive() {
   local file manifest

@@ -112,10 +112,16 @@ function decode_spinner_msg() {
   echo "$1" | tr '@@@' ' '
 }
 
-# Runs any function in this script with an number of args
-# Uses a spinner to inform the user of the progress and tick while the task is performed
-# First argument to this function must be the message the spinner will display. AKA the spinner message.
-# Any occurence of @@@ in a spinner message will be replaced with a single space character.
+# Dynamically invokes function or command with the arguments passed to it using a sub-shell
+# Uses a visual spinner to inform the user of the progress and the result
+# ($1) is the message the spinner will display as it is ticking
+# ($2) is the function or command that will be invoked
+# $1 and $2 are shifted away so that the rest of the arguments passed to this function ($@)
+# are passed on to the subshell
+#
+# Note:
+# Returns 0 on success and returns 1 on failure
+# Any occurrence of @@@ in a spinner message will be replaced with a single space character
 function spinner_task() {
   local e_pre msg ec command
   e_pre="Spinner task failed:"
@@ -126,7 +132,7 @@ function spinner_task() {
   #if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
   command="$2"
   shift; shift
-  start_spinner "$(decode_spinner_msg "$msg") " && ("$command" "$@")
+  start_spinner "$(decode_spinner_msg "$msg") " && ("$command" "$@" 2> /dev/null )
   ec=$?
   [[ $ec != 0 ]] && stop_spinner 1 && return 1
   stop_spinner 0
