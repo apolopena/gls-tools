@@ -81,7 +81,7 @@ get_deps() {
   local i deps url url_root="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
   deps=(colors.sh headers.sh third-party/spinner.sh)
   for i in "${deps[@]}"; do
-    url="${url_root}/${deps[$1]}"
+    url="${url_root}/${deps[$i]}"
     if url_exists "$url"; then
       # shellcheck source=/dev/null
       if ! source <(curl -fsSL "$url"); then echo "Unable to source $url"; return 1; fi
