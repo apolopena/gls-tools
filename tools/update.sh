@@ -323,12 +323,13 @@ download_release_json() {
   local url msg
   url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   msg="${c_norm}Downloading release data"
-  echo -e "$msg from:\n\t${c_url}$url${c_e}"
-  if ! curl --silent "$url" -o "$release_json"; then
-    err_msg "${c_norm_prob}Could not download release data from\n\t ${c_url}$url${c_e}"
-    return 1
-  fi
-  return 0
+  #echo -e "$msg from:\n\t${c_url}$url${c_e}"
+  spinner_task "$msg from:\n\t${c_url}$url${c_e}" "curl" --silent "$url" -o "$release_json"
+#  if ! curl --silent "$url" -o "$release_json"; then
+#    err_msg "${c_norm_prob}Could not download release data from\n\t ${c_url}$url${c_e}"
+#    return 1
+#  fi
+#  return 0
 }
 
 ### has_directive ###

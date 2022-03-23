@@ -123,7 +123,7 @@ function spinner_task() {
   msg="$(encode_spinner_msg "$1")"
   [[ -z $2 ]] && echo "$e_pre Missing command argument" && return 1
   # For security only eval functions that exist in this script
-  if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
+  #if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
   command="$2"
   shift; shift
   start_spinner "$(decode_spinner_msg "$msg") " && eval "$command $*"
