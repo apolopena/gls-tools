@@ -23,22 +23,22 @@ _Only use `tools/update.sh` on an empty project or a project built with Laravel.
 
 > Interactively install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). If you have a Laravel project already built then this script will essentially 'Gitpodify` your current project.
 ```bash
- bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/install.sh ) 
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh ) 
  ```
 
  > Force install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). This is a good option when you want to install [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) into an empty project.
 ```bash
- yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
+ yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
 
 > Interactively update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
 ```bash
- bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
+ bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
 
  > Force update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) with minimal interactivity. Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
 ```bash
- yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/update.sh ) 
+ yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
 <br />
 
@@ -51,19 +51,19 @@ These scripts are generally used for internal purposes and testing but you are w
 > List all [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) release versions 
 ```bash
  bash \
- <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/internal/blackbox.sh ) \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/internal/blackbox.sh ) \
  gls version-list
  ```
 
  > Install the latest release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
  bash \
- <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/blackbox.sh ) \
  gls install-latest
  ```
 > Install any release version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 ```bash
  bash \
- <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-updater/main/tools/blackbox.sh ) \
+ <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/blackbox.sh ) \
  gls install 1.4.0
  ```
