@@ -4,7 +4,6 @@
 # Copyright © 2022 Apolo Pena
 #
 # install-gls.sh
-# Version: 0.0.1
 #
 # Description:
 # Installs gitpod-laravel-starter.

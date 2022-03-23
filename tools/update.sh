@@ -4,7 +4,6 @@
 # Copyright © 2022 Apolo Pena
 #
 # update-gls.sh
-# Version: 1.0.0
 #
 # Description:
 # Updates an existing project build on gitpod-laravel-starter to the latest version.
