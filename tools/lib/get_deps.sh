@@ -27,9 +27,11 @@
 # Dependencies will be loaded in the order of the arguments given.
 # Echos a 404 error message if the URL does not exist.
 # Be aware not to accidentally source anything that will overwrite calling script's declarations.
+
+_get_deps_name='lib/get_deps.sh'
+
 get_deps() {
-  echo "get_deps() \$1=$1"
-  local deps i ec url uri load_locally this_script_dir e_pre="get_deps() failed:"
+  local deps i ec url uri load_locally this_script_dir e_pre="$_get_deps_name failed:"
   local base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
 
   [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "$e_pre At least one argument is required" && return 1
