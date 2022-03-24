@@ -26,12 +26,18 @@
 # Be aware not to accidentally source anything that will overwrite calling script's declarations.
 get_deps() {
   local deps=("$@")
-  local i ec url base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  [[ $# -eq 0 ]] && echo "get_deps() failed: at least one argument is required" && return 1
+  local i ec url load_locally base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
+  [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "get_deps() failed: at least one argument is required" && return 1
+  [[ $1 == --load-locally ]] && load_locally=yes && shift
 
   for i in "${deps[@]}"; do
+    if [[ $load_locally == yes ]]; then
+      # shellcheck source=/dev/null
+      . "lib/$i"
+      return 0
+    fi
     url="${base_url}/$i"
-     if curl --head --silent --fail "$url" &> /dev/null; then
+    if curl --head --silent --fail "$url" &> /dev/null; then
       # shellcheck source=/dev/null
       source <(curl -fsSL "$url" &)
       ec=$?
@@ -40,7 +46,7 @@ get_deps() {
     else
       echo "404 error at url: $url"
       return 1
-  fi
+    fi
   done
 }
 
