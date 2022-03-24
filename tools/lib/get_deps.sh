@@ -32,7 +32,7 @@ get_deps() {
   local base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
 
   [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "$e_pre At least one argument is required" && return 1
-  [[ $1 == ^- && $1 != --load-deps-locally ]] && echo "$e_pre: Invalid option $1" && return 1
+  [[ $1 =~ ^- && $1 != --load-deps-locally ]] && echo "$e_pre: Invalid option $1" && return 1
 
   if [[ $1 == --load-deps-locally ]]; then
     load_locally=yes
@@ -45,7 +45,7 @@ get_deps() {
   if [[ $load_locally == yes ]]; then
     for i in "${deps[@]}"; do
       uri="$this_script_dir/$i"
-      if ! . "$uri"; then echo "$e_pre Could not load local dependency: $uri"; return 1; fi
+      if ! . "$uri"; then echo "$e_pre Unable source the required local dependency: $uri"; return 1; fi
     done
     return 0
   fi
@@ -54,7 +54,8 @@ get_deps() {
     url="${base_url}/$i"
     if curl --head --silent --fail "$url" &> /dev/null; then
       source <(curl -fsSL "$url" &)
-      ec=$? && if [[ $ec != 0 ]] ; then echo "$e_pre Unable to source $url"; return 1; fi
+      ec=$?
+      [[ $ec != 0 ]] && echo "$e_pre Unable to source the required dependency from: $url"; return 1; fi
       wait;
     else
       echo "$e_pre 404 error at url: $url"
