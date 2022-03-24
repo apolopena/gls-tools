@@ -323,7 +323,7 @@ download_release_json() {
   local url msg
   url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   msg="${c_norm}Downloading release data"
-  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curly' --silent "$url" -o "$release_json"
+  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curl' --silent "$url" -o "$release_json"
 }
 
 ### has_directive ###
