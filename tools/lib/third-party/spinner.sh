@@ -112,10 +112,13 @@ function decode_spinner_msg() {
   echo "$1" | tr '@@@' ' '
 }
 
-# Dynamically invokes function or command with the arguments passed to it using a sub-shell
-# Uses a visual spinner to inform the user of the progress and the result
-# ($1) is the message the spinner will display as it is ticking
-# ($2) is the function or command that will be invoked
+### spinner_task ###
+# Description:
+# Dynamically invokes function or command with the arguments passed to it via a sub-shell
+# Uses a spinner to inform the user with a message, a progress ticker and the result (DONE or FAILED)
+# ($1) The message the spinner will display as it is ticking
+# ($2) The function or command that will be invoked
+# ($3) Optional flag --show-error which removes redirection of stderr to /dev/null for the command ($2)
 # $1 and $2 are shifted away so that the rest of the arguments passed to this function ($@)
 # are passed on to the subshell
 #
@@ -123,17 +126,25 @@ function decode_spinner_msg() {
 # Returns 0 on success and returns 1 on failure
 # Any occurrence of @@@ in a spinner message will be replaced with a single space character
 function spinner_task() {
-  local e_pre msg ec command
+  local e_pre msg ec cmd show_error
   e_pre="Spinner task failed:"
+
   [[ -z $1 ]] && echo "$e_pre Missing message argument" && return 1
-  msg="$(encode_spinner_msg "$1")"
   [[ -z $2 ]] && echo "$e_pre Missing command argument" && return 1
-  # For security only eval functions that exist in this script
-  #if ! declare -f "$2" > /dev/null; then echo "$e_pre function does not exist: $2" && return 1; fi
-  command="$2"
-  shift; shift
-  start_spinner "$(decode_spinner_msg "$msg") " && ("$command" "$@" 2> /dev/null )
-  ec=$?
-  [[ $ec != 0 ]] && stop_spinner 1 && return 1
+  [[ $3 == '--show-error' ]] && show_error="$3"
+  
+  msg="$(encode_spinner_msg "$1")"
+  cmd="$2";
+   
+  if [[ -n $show_error ]]; then 
+    shift; shift; shift
+    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" 2> /dev/null )
+  else
+    shift; shift
+    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" )
+  fi
+  
+  ec=$? && [[ $ec != 0 ]] && stop_spinner 1 && return 1
+
   stop_spinner 0
 }
