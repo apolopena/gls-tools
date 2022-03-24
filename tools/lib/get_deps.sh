@@ -17,32 +17,47 @@
 # Description:
 # Synchronously downloads dependencies ($@) via curl into memory and sources them into the calling script.
 # Returns 0 if all dependencies are downloaded and sourced, return 1 otherwise.
-# All dependencies pass in will use a base URL of:
+# All dependencies passed in will use a base URL of:
 #    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
-#
+# Unless this functions first argument contains the long option --load-deps-locally
+# In the case of the --load-locally option, dependencies will be loaded from the directory
+# where this script resides on the local file system (./lib/)
 # Note:
 # Requires at least one argument.
 # Dependencies will be loaded in the order of the arguments given.
 # Echos a 404 error message if the URL does not exist.
 # Be aware not to accidentally source anything that will overwrite calling script's declarations.
 get_deps() {
-  local deps i ec url load_locally base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
-  [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "get_deps() failed: at least one argument is required" && return 1
-  [[ $1 == --load-locally ]] && load_locally=yes && shift
+  local deps i ec url uri load_locally this_script_dir e_pre="get_deps() failed:"
+  local base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
+
+  [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "$e_pre At least one argument is required" && return 1
+  [[ $1 == ^- && $1 != --load-deps-locally ]] && echo "$e_pre: Invalid option $1" && return 1
+
+  if [[ $1 == --load-deps-locally ]]; then
+    load_locally=yes
+    this_script_dir="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
+    shift
+  fi
 
   deps=("$@")
 
-  for i in "${deps[@]}"; do
-    if [[ $load_locally == yes ]]; then . "lib/$i" && return 0; else return 1; fi
+  if [[ $load_locally == yes ]]; then
+    for i in "${deps[@]}"; do
+      uri="$this_script_dir/$i"
+      if ! . "$uri"; then echo "$e_pre Could not load local dependency: $uri"; return 1; fi
+    done
+    return 0
+  fi
 
+  for i in "${deps[@]}"; do
     url="${base_url}/$i"
-    
     if curl --head --silent --fail "$url" &> /dev/null; then
       source <(curl -fsSL "$url" &)
-      ec=$? && if [[ $ec != 0 ]] ; then echo "Unable to source $url"; return 1; fi
+      ec=$? && if [[ $ec != 0 ]] ; then echo "$e_pre Unable to source $url"; return 1; fi
       wait;
     else
-      echo "404 error at url: $url"
+      echo "$e_pre 404 error at url: $url"
       return 1
     fi
   done

@@ -819,6 +819,12 @@ load_get_deps() {
   ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $get_deps_url"; exit 1; fi; wait;
 }
 
+load_get_deps_locally() {
+  local script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
+  # shellcheck source=/dev/null
+  . "$script_dir/lib/get_deps.sh" || return 1
+}
+
 ### main ###
 # Description:
 # Main routine
@@ -831,13 +837,24 @@ load_get_deps() {
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script.
 main() {
-  local ec dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
+  local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
+  local ec possible_option abort="update aborted"
+
+  # Load the loader either remotely or using the local file system (--load-deps-locally)
+  # If loading locally pass on --load-deps-locally flag to get_deps()
+  if [[ $1 == --load-deps-locally ]]; then
+    possible_option="$1"
+    shift
+    if ! load_get_deps_locally; then echo -e "Failed to locally load the loader\n$abort"; exit 1; else echo loaded locally; fi
+  else
+    if ! load_get_deps; then echo -e "Failed to load the loader\n$abort"; exit 1; fi
+  fi
   
-  if ! load_get_deps; then exit 1; fi
-  if ! get_deps "${dependencies[@]}"; then exit 1; fi
+  # Load dependencies, initialize, update and cleanup
+  if ! get_deps "$possible_option" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
   if ! init; then exit 1; fi
-  if ! update; then cleanup && exit 1; fi
+  if ! update; then cleanup; exit 1; fi
 }
 # END: functions
 
-main
+main "$@"
