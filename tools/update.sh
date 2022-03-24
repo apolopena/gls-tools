@@ -807,22 +807,9 @@ init() {
   gls_header 'updater'
 }
 
-### main ###
-# Description:
-# Main routine
-# Order specific:
-#   1. Pre check the url for loading get_deps.sh, abort if the check fails
-#   2. Load get_deps.sh as it contains get_deps() which is used to load the rest of the dependencies
-#   3. Load the rest of the dependencies using get_deps()
-#   4. Initialize
-#   5. Update. Clean up if the update fails
-#
-# Note:
-# Dependency loading is synchronous and happens on every invocation of the script.
-main() {
-  local ec dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
-  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.sh"
 
+load_get_deps() {
+  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.sh"
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
     err_msg "Cannot load the loader" && exit 1
   fi
@@ -830,7 +817,23 @@ main() {
   source \
   <(curl -fsSL "$get_deps_url" &)
   ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $get_deps_url"; exit 1; fi; wait;
+}
 
+### main ###
+# Description:
+# Main routine
+# Order specific:
+#   1. Load get_deps.sh as it contains get_deps() which is used to load the rest of the dependencies
+#   2. Load the rest of the dependencies using get_deps()
+#   3. Initialize
+#   4. Update. Clean up if the update fails
+#
+# Note:
+# Dependency loading is synchronous and happens on every invocation of the script.
+main() {
+  local ec dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
+  
+  if ! load_get_deps; then exit 1; fi
   if ! get_deps "${dependencies[@]}"; then exit 1; fi
   if ! init; then exit 1; fi
   if ! update; then cleanup && exit 1; fi
