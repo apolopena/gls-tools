@@ -53,9 +53,8 @@ get_deps() {
   for i in "${deps[@]}"; do
     url="${base_url}/$i"
     if curl --head --silent --fail "$url" &> /dev/null; then
-      source <(curl -fsSL "$url" &)
-      ec=$?
-      [[ $ec != 0 ]] && echo "$e_pre Unable to source the required dependency from: $url"; return 1; fi
+      source <(curl -fsSL "$url" &); ec=$?
+      [[ $ec != 0 ]] && echo "$e_pre Unable to source the required dependency from: $url" && return 1
       wait;
     else
       echo "$e_pre 404 error at url: $url"
