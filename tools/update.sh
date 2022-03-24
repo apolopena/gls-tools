@@ -840,18 +840,23 @@ main() {
   local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
   local ec possible_option abort="update aborted"
 
+  [[ $1 =~ ^- && $1 != --load-deps-locally ]] && echo -e "$(name) Invalid option: $1\n$abort" && exit 1
+
   # Load the loader either remotely or using the local file system (--load-deps-locally)
   # If loading locally pass on --load-deps-locally flag to get_deps()
+  if ! load_get_deps_locally; then echo -e "Failed to locally load the loader\n$abort"; exit 1; else echo loaded locally; fi
   if [[ $1 == --load-deps-locally ]]; then
+  #if [[ 1 -eq 1 ]]; then
     possible_option="$1"
     shift
     if ! load_get_deps_locally; then echo -e "Failed to locally load the loader\n$abort"; exit 1; else echo loaded locally; fi
   else
-    if ! load_get_deps; then echo -e "Failed to load the loader\n$abort"; exit 1; fi
+  echo
+    #if ! load_get_deps; then echo -e "Failed to load the loader\n$abort"; exit 1; fi
   fi
   
   # Load dependencies, initialize, update and cleanup
-  if ! get_deps "$possible_option" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
+  if ! get_deps ${possible_option:+"-x"} "${dependencies[@]}"; then echo "$abort"; exit 1; fi
   if ! init; then exit 1; fi
   if ! update; then cleanup; exit 1; fi
 }

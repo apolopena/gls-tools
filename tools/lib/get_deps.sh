@@ -28,11 +28,12 @@
 # Echos a 404 error message if the URL does not exist.
 # Be aware not to accidentally source anything that will overwrite calling script's declarations.
 get_deps() {
+  echo "get_deps() \$1=$1"
   local deps i ec url uri load_locally this_script_dir e_pre="get_deps() failed:"
   local base_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib"
 
   [[ $# -eq 0 || $# -eq 1 && $1 =~ ^-- ]] && echo "$e_pre At least one argument is required" && return 1
-  [[ $1 =~ ^- && $1 != --load-deps-locally ]] && echo "$e_pre: Invalid option $1" && return 1
+  [[ $1 =~ ^- && $1 != --load-deps-locally ]] && echo "$e_pre Invalid option $1" && return 1
 
   if [[ $1 == --load-deps-locally ]]; then
     load_locally=yes
