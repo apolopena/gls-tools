@@ -138,10 +138,10 @@ function spinner_task() {
    
   if [[ -n $show_error ]]; then 
     shift; shift; shift
-    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" 2> /dev/null )
+    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" )
   else
     shift; shift
-    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" )
+    start_spinner "$(decode_spinner_msg "$msg") " && ( "$cmd" "$@" 2> /dev/null )
   fi
   
   ec=$? && [[ $ec != 0 ]] && stop_spinner 1 && return 1
