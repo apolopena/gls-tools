@@ -48,7 +48,7 @@ get_deps() {
   if [[ $load_locally == yes ]]; then
     for i in "${deps[@]}"; do
       uri="$this_script_dir/$i"
-      if ! . "$uri"; then echo "$e_pre Unable source the required local dependency: $uri"; return 1; fi
+      if ! source "$uri"; then echo "$e_pre Unable source the required local dependency: $uri"; return 1; fi
     done
     return 0
   fi
