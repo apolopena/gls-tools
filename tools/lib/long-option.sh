@@ -21,7 +21,7 @@ ___long_options=()
 # Returns 1 if a long option has not been set by via init_long_options()
 # 
 # Note:
-# init_long_options() must be called prior to calling this function
+# The one-time function set_long_options() must be called prior to calling this function
 has_long_option() {
   printf '%s\n' "${___long_options[@]}" | grep -Fxq -- "$1"
 }
@@ -29,7 +29,7 @@ has_long_option() {
 
 ### is_long_option ###
 # Description:
-# Validates a long option
+# Validates  the structure of a long option
 # Returns 0 if $1:
 # Starts with double dashes followed by any number of uppercase or lowercase letters or integers
 # optionally followed by zero or more sets of a single dash that must be accompanied 
@@ -39,7 +39,7 @@ is_long_option() {
   [[ $1 =~ ^--[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$ ]] && return 0 || return 1
 }
 
-### init_long_options ###
+### set_long_options ###
 # Description:
 # One time operation to set the long options internal array
 #
@@ -60,11 +60,11 @@ is_long_option() {
 #  }  
 #  main
 #
-init_long_options() {
+set_long_options() {
   local script_args=("$@")
 
   if [[ ${#___long_options[@]} -gt 0 ]]; then
-    echo "$_long_option_name failed: long options cannot be reinitialized"
+    echo "$_long_option_name failed: long options can only be set once"
     return 1
   fi 
   local arg i=0
@@ -81,7 +81,7 @@ init_long_options() {
 # Prints a list of all long options passed a script that sources this script or this script
 # 
 # Note:
-# init_long_options() must be called prior to calling this function
+# The one-time function set_long_options() must be called prior to calling this function
 list_long_options() {
   [[ ${#___long_options[@]} -gt 0 ]] && printf '%s\n' "${___long_options[@]}"
 }
