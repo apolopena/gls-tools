@@ -56,7 +56,7 @@ is_long_option() {
 #  # --bar--baz
 #  source lib/long-option.sh
 #  main() {
-#    init_long_options "$@"
+#    set_long_options "$@"
 #  }  
 #  main
 #
