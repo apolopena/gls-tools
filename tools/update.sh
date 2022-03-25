@@ -850,7 +850,6 @@ main() {
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
     possible_option=("--load-deps-locally")
-    shift
     load_get_deps_locally
   else
     load_get_deps
@@ -858,6 +857,12 @@ main() {
 
   # Load dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
+  
+  # Set long options
+  init_long_options "${script_args[@]}"
+
+  # Fail if any unsupported options are passed in
+  #if ! all_long_options_supported; then echo -e "${c_warn}$abort${c_e}"; exit 1; fi
 
   # Initialize
   if ! init; then exit 1; fi
