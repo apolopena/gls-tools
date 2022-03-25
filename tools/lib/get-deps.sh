@@ -13,22 +13,22 @@
 # Only share functions from this script that really need to be shared
 # Avoid the 'god object' even though the 'utils' pattern this script uses encourages it ;)
 
-### get_deps ###
+### get-dep.sh ###
 # Description:
 # Synchronously downloads dependencies ($@) via curl into memory and sources them into the calling script.
 # Returns 0 if all dependencies are downloaded and sourced, return 1 otherwise.
 # All dependencies passed in will use a base URL of:
 #    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
-# Unless this functions first argument contains the long option --load-deps-locally
-# In the case of the --load-locally option, dependencies will be loaded from the directory
-# where this script resides on the local file system (./lib/)
+# Unless this functions first argument contains the long option flag --load-deps-locally
+# In the case of the --load-deps-locally long option flag, dependencies will be loaded from the directory
+# where this script resides on the local file system (./tools/lib/)
 # Note:
 # Requires at least one argument.
 # Dependencies will be loaded in the order of the arguments given.
 # Echos a 404 error message if the URL does not exist.
 # Be aware not to accidentally source anything that will overwrite calling script's declarations.
 
-_get_deps_name='lib/get_deps.sh'
+_get_deps_name='lib/get-deps.sh'
 
 get_deps() {
   local deps i ec url uri load_locally this_script_dir e_pre="$_get_deps_name failed:"

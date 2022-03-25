@@ -809,27 +809,32 @@ init() {
 
 
 load_get_deps() {
-  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get_deps.sh"
+  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
-    err_msg "Cannot load the loader" && exit 1
+    err_msg "Failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
   # shellcheck source=/dev/null
   source \
   <(curl -fsSL "$get_deps_url" &)
-  ec=$?; if [[ $ec != 0 ]] ; then echo "Unable to source $get_deps_url"; exit 1; fi; wait;
+  ec=$?;
+  if [[ $ec != 0 ]] ; then echo -e "Failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
 }
 
 load_get_deps_locally() {
-  local script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
+  local this_script_dir
+  this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
   # shellcheck source=/dev/null
-  . "$script_dir/lib/get_deps.sh" || return 1
+  if ! source "$this_script_dir/lib/get-deps.sh"; then
+    "Failed to source the loader from the local file system:\n\t$get_deps_url"
+    exit 1
+  fi
 }
 
 ### main ###
 # Description:
 # Main routine
 # Order specific:
-#   1. Load get_deps.sh as it contains get_deps() which is used to load the rest of the dependencies
+#   1. Load get-deps.sh as it contains get_deps() which is used to load the rest of the dependencies
 #   2. Load the rest of the dependencies using get_deps()
 #   3. Initialize
 #   4. Update. Clean up if the update fails
@@ -846,9 +851,9 @@ main() {
   if [[ $1 == --load-deps-locally ]]; then
     possible_option=("$1")
     shift
-    if ! load_get_deps_locally; then echo -e "Failed to locally load the loader\n$abort"; exit 1; fi
+    load_get_deps_locally
   else
-    if ! load_get_deps; then echo -e "Failed to load the loader\n$abort"; exit 1; fi
+    load_get_deps
   fi
   
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
