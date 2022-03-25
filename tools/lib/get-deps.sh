@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# get_deps.sh
+# get-deps.sh
 #
 # Description:
 # A single function for loading and sourcing gls-tool dependencies into the calling script via curl
@@ -20,8 +20,8 @@
 # All dependencies passed in will use a base URL of:
 #    https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib
 # Unless this functions first argument contains the long option flag --load-deps-locally
-# In the case of the --load-deps-locally long option flag, dependencies will be loaded from the directory
-# where this script resides on the local file system (./tools/lib/)
+# In the case of the --load-deps-locally long option flag, dependencies will be loaded relatively
+# from the directory where this script resides on the local file system (./tools/lib/)
 # Note:
 # Requires at least one argument.
 # Dependencies will be loaded in the order of the arguments given.

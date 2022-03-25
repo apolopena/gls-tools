@@ -5,9 +5,6 @@
 #
 # header.sh
 #
-# Requires:
-# Bash version >= 4
-#
 # Description:
 # Fancy ANSI 256 colorized headers for gls tools with matching footer ($1)
 # Supported footers are: installer, uninstaller and updater
