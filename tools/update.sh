@@ -17,8 +17,14 @@
 
 # BEGIN: Globals
 
-# This script arguments. Never mutate them.
-script_args=("$@")
+# This script arguments.Set from main(). Never mutate them.
+script_args=()
+
+# Supported options.Set in main(). Never mutate them.
+global_supported_options=()
+
+# Commands. Set by init()
+commands=()
 
 # The version to update to
 target_version=
@@ -51,8 +57,8 @@ release_json="$tmp_dir/latest_release.json"
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile
 gp_df_only_cache_buster_changed=no
 
-# Global message prefixes are declared here but set in main so they can be conditionally colorized
-note_prefix=;warn_prefix=
+# Global message prefixes are declared here but set in init() so they can be conditionally colorized
+note_prefix=
 
 # Keep shellchack happy by predefining the colors set by lib/colors.sh
 c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_warn2=; c_fail=; c_file=;
@@ -789,30 +795,12 @@ update() {
   # END: update by deleting the old and copying over the new
 }
 
-### init ###
-# Description:
-# Validates an existing installation of gls and initializes
-# the project so the update routine can be called
-init() {
-  handle_colors
-
-  local gls e_not_installed
-  gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
-  warn_prefix="${c_warn2}Warning:${c_e}"
-  note_prefix="${c_file_name}Notice:${c_e}"
-
-  [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
-
-  gls_header 'updater'
-}
-
-
 load_get_deps() {
   local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
     err_msg "Failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
+
   # shellcheck source=/dev/null
   source \
   <(curl -fsSL "$get_deps_url" &)
@@ -823,11 +811,81 @@ load_get_deps() {
 load_get_deps_locally() {
   local this_script_dir
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
+
   # shellcheck source=/dev/null
   if ! source "$this_script_dir/lib/get-deps.sh"; then
     "Failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
   fi
+}
+
+validate_options() {
+  local failed options;
+
+  if ! declare -f "list_long_options" > /dev/null; then
+    echo -e "${c_norm_prob}Failed to validate options: list_long_options() does not exist${c_e}"
+    return 1
+  fi
+
+  options="$(list_long_options)"
+  for option in $options; do
+    if [[ ! "${global_supported_options[*]}" =~ $option ]]; then
+        echo -e "${c_norm_prob}Unsupported long option: ${c_pass}$option${c_e}"
+        failed=1
+    fi
+  done
+
+  [[ -n $failed ]] && return 1 || return 0
+}
+
+### init ###
+# Description:
+# Validates an existing installation of gls and initializes
+# the project so the update routine can be called
+init() {
+  local arg gls e_not_installed e_long_options e_illegal_short_option e_illegal_option e_command
+  
+  # Enable color support
+  handle_colors
+
+  # Set potential messages
+  gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
+  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
+  e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
+  e_illegal_short_option="${c_norm_prob}Illegal short option:${c_e}"
+  e_illegal_option="${c_norm_prob}Illegal option:${c_e}"
+  e_command="${c_norm_prob}Unsupported Command:${c_e}"
+  note_prefix="${c_file_name}Notice:${c_e}"
+
+  # Fail if there is no existing gitpod-laravel-starter to update.
+  # TODO: make this work for older versions that don't have a .gp folder
+  [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
+
+  # Set and validate global options 
+  if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
+  if ! validate_options; then abort_msg && return 1; fi
+
+  # Commands and short options are illegal so handle them quick and dirty style
+  for arg in "${script_args[@]}"; do
+    # Regex: Short options are a single dash or start with a single dash but not a double dash
+    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] \
+      && err_msg "$e_illegal_short_option ${c_pass}$arg${c_e}" \
+      && abort_msg \
+      && return 1
+
+    # Regex: Commands do not start with a dash
+    [[ $arg =~ ^[^\-] ]] \
+      && err_msg "$e_command ${c_pass}$arg${c_e}" \
+      && abort_msg \
+      && return 1
+    
+    # A bare double dash is an illegal option
+    [[ $arg == '--' ]] && err_msg "$e_illegal_option ${c_pass}$arg${c_e}" && abort_msg && return 1
+
+  done
+  
+  # Show fancy header, implicitly indicate init() was a success ;)
+  gls_header 'updater'
 }
 
 ### main ###
@@ -843,13 +901,19 @@ load_get_deps_locally() {
 # Dependency loading is synchronous and happens on every invocation of the script.
 main() {
   local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh' 'long-option.sh')
-  local script_args=("$@")
-  local possible_option=()
-  local ec abort="update aborted"
+  local possible_option=(); 
+  local abort="update aborted"
+  local ec
+
+  # Set globals. Never mutate them.
+  script_args=("$@");
+  global_supported_options=(--help --debug --load-deps-locally --manifest)
+
+
 
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
-    possible_option=("--load-deps-locally")
+    possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
     load_get_deps
@@ -857,17 +921,9 @@ main() {
 
   # Load dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
-  
-  # Set long options
-  init_long_options "${script_args[@]}"
 
-  # Fail if any unsupported options are passed in
-  #if ! all_long_options_supported; then echo -e "${c_warn}$abort${c_e}"; exit 1; fi
-
-  # Initialize
+  # Initialize, update and cleanup only on failure (update() cleans up after itself if succeeds)
   if ! init; then exit 1; fi
-
-  # Update and cleanup only on failure since update() cleans up after itself if succeeds
   if ! update; then cleanup; exit 1; fi
 }
 # END: functions

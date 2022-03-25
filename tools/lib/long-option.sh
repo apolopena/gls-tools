@@ -68,7 +68,6 @@ set_long_options() {
     return 1
   fi
 
-echo "${script_args[*]}"
   local arg i=0
   for arg in "${script_args[@]}"; do
     if is_long_option "$arg"; then
@@ -76,7 +75,6 @@ echo "${script_args[*]}"
       (( i++ ))
     fi
   done
-echo "${___long_options[*]}"
   return 0
 }
 
