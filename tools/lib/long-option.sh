@@ -64,9 +64,11 @@ set_long_options() {
   local script_args=("$@")
 
   if [[ ${#___long_options[@]} -gt 0 ]]; then
-    echo "$_long_option_name failed: long options can only be set once"
+    echo "$_long_option_name failed: internal error: long options can only be set once"
     return 1
-  fi 
+  fi
+
+echo "${script_args[*]}"
   local arg i=0
   for arg in "${script_args[@]}"; do
     if is_long_option "$arg"; then
@@ -74,6 +76,8 @@ set_long_options() {
       (( i++ ))
     fi
   done
+echo "${___long_options[*]}"
+  return 0
 }
 
 ### list_long_options ###
