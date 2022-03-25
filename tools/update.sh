@@ -842,22 +842,27 @@ load_get_deps_locally() {
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script.
 main() {
-  local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh')
-  local ec abort="update aborted"
+  local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh' 'long-option.sh')
+  local script_args=("$@")
   local possible_option=()
+  local ec abort="update aborted"
 
-  [[ $1 =~ ^- && $1 != --load-deps-locally ]] && echo -e "$(name) Invalid option: $1\n$abort" && exit 1
-
-  if [[ $1 == --load-deps-locally ]]; then
-    possible_option=("$1")
+  # Load the loader (get-deps.sh)
+  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
+    possible_option=("--load-deps-locally")
     shift
     load_get_deps_locally
   else
     load_get_deps
   fi
-  
+
+  # Load dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
+
+  # Initialize
   if ! init; then exit 1; fi
+
+  # Update and cleanup only on failure since update() cleans up after itself if succeeds
   if ! update; then cleanup; exit 1; fi
 }
 # END: functions
