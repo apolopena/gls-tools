@@ -19,8 +19,6 @@
 #           Omits the moving of the below files to the .gp folder if they exist:
 #           CHANGELOG.md, README.md, LICENSE
 
-shopt -s extglob
-
 script="$(basename "${BASH_SOURCE[0]}")"
 script_args=("$@")
 long_options=()
@@ -59,7 +57,7 @@ init() {
   esac
   
   # Gather options from the script arguments
-  # if it is are not a valid long option or a supported option then exit with error
+  # if it is not a valid long option or a supported option then exit with error
   for (( i=0; i<${#script_args[@]}; i++ )); do
     arg="${script_args[i]}"
     if [[ $arg =~ ^- ]]; then 
@@ -178,7 +176,7 @@ new() {
   [[ -z $1 ]] && echo "The new subommand requires an additional subcommand argument" && return 1
 
   case $1 in 
-    @(sandbox|control-sandbox)*)
+    sandbox | control-sandbox)
       [[ -z $2 ]] && echo "The $1 command requires a version argument" && return 1
       if ! version_exists "$2"; then 
         echo "$1 command requires a valid gls version. Not $2"
