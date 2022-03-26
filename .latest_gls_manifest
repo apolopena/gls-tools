@@ -15,7 +15,6 @@ starter.ini
 .gitpod.Dockerfile
 CHANGELOG.md
 /.gp
-/.theia
 /.vscode
 
 
