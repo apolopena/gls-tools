@@ -879,6 +879,17 @@ validate_arguments() {
     # A bare double dash is also an illegal option
     [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
   done
+  return 0
+}
+
+gls_installation_exists() {
+  # v0.0.1 to v0.0.4 See: https://github.com/apolopena/gls-tools/issues/4
+  [[ -d .theia && -d bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
+
+  # v1.0.0 - latest
+  [[ -d .gp/bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
+
+  return 1
 }
 
 ### init ###
@@ -888,30 +899,28 @@ validate_arguments() {
 # A fancy header is written to stdout if this function succeeds ;)
 #
 # Returns 0 if successful, returns 1 if there are any errors
-# Also returns 1 if an existing installation of gitpod-laravel-starter is detected
+# Also returns 1 if an existing installation of gitpod-laravel-starter is not detected
 #
 # Note:
 # This function can only be called once.
 # Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_command
+  local arg gls e_not_installed e_long_options e_command nothing_m script_m
   
-  # Enable color support
   handle_colors
 
-  gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
+  gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
+  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not detected${c_e}"
+  curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh)"
+  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead\n\tRun: ${c_uri}$curl_m${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
   e_command="${c_norm_prob}Unsupported Command:${c_e}"
   note_prefix="${c_file_name}Notice:${c_e}"
 
-  # Return an error if there is no existing gitpod-laravel-starter to update.
-  # TODO: make this work for older versions that don't have a .gp folder
-  [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
-
+  if ! gls_installation_exists; then err_msg "$e_not_installed\n\t$nothing_m" && abort_msg && return 1; fi
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! validate_long_options; then abort_msg && return 1; fi
-  if ! validate_arguments; then abort_msg && return 1; fi
+  if ! validate_long_options; then echo bad long options; abort_msg && return 1; fi
+  if ! validate_arguments; then echo bad arguments; abort_msg && return 1; fi
 
   gls_header 'updater'
 }
