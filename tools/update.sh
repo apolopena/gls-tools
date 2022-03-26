@@ -24,8 +24,6 @@ script_args=()
 # Supported options.Set in main(). Never mutate them.
 global_supported_options=()
 
-
-
 # The version to update to
 target_version=
 
