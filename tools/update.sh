@@ -795,8 +795,13 @@ update() {
   # END: update by deleting the old and copying over the new
 }
 
+### load_get_deps ###
+# Description:
+# Downloads and sources dependencies $@
+# using the base url: https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/
 load_get_deps() {
   local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
+
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
     err_msg "Failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
@@ -807,18 +812,31 @@ load_get_deps() {
   if [[ $ec != 0 ]] ; then echo -e "Failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
 }
 
+### load_get_deps_locally ###
+# Description:
+# Sources dependencies $@ from the local file system relative to tools/lib
 load_get_deps_locally() {
   local this_script_dir
 
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
-
   if ! source "$this_script_dir/lib/get-deps.sh"; then
     "Failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
   fi
 }
 
-valid_long_options() {
+### validate_long_options ###
+# Description:
+# Checks 'set' long options against the global_supported_options array
+#
+# Returns 0 if all 'set' long options are in the global_supported_options array
+# Return 1 if a 'set' long option is not in the global_supported_options array
+# Returns 1 if the list_long_options function is not sourced
+#
+# Note:
+# This function relies on lib/long-option.sh
+# For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
+validate_long_options() {
   local failed options;
 
   if ! declare -f "list_long_options" > /dev/null; then
@@ -839,17 +857,25 @@ valid_long_options() {
   [[ -n $failed ]] && return 1 || return 0
 }
 
-# Commands and short options are illegal so handle them quick and dirty style
-valid_arguments() {
+### validate_arguments ###
+# Description:
+# Validate the scripts arguments
+#
+# NOte:
+# Commands and short options are illegal. This functions handles them quick and dirty
+validate_arguments() {
   local e_bad_opt e_bad_short_opt
+
   e_bad_short_opt="${c_norm_prob}Illegal short option:${c_e}"
   e_bad_opt="${c_norm_prob}Illegal option:${c_e}"
 
   for arg in "${script_args[@]}"; do
     # Regex: Short options are a single dash or start with a single dash but not a double dash
     [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
+
     # Regex: Commands do not start with a dash
     [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
+
     # A bare double dash is also an illegal option
     [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
   done
@@ -860,8 +886,9 @@ valid_arguments() {
 # Enables colors, validates all arguments passed to this script,
 # sets long options and sets any global strings that need to be colorized
 # A fancy header is written to stdout if this function succeeds ;)
+#
 # Returns 0 if successful, returns 1 if there are any errors
-# Also returns 1 if an existing installations of gitpod-laravel-starter is detected
+# Also returns 1 if an existing installation of gitpod-laravel-starter is detected
 #
 # Note:
 # This function can only be called once.
@@ -883,8 +910,8 @@ init() {
   [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
 
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! valid_long_options; then abort_msg && return 1; fi
-  if ! valid_arguments; then abort_msg && return 1; fi
+  if ! validate_long_options; then abort_msg && return 1; fi
+  if ! validate_arguments; then abort_msg && return 1; fi
 
   gls_header 'updater'
 }
