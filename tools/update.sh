@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck source=/dev/null
 #
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
@@ -23,8 +24,7 @@ script_args=()
 # Supported options.Set in main(). Never mutate them.
 global_supported_options=()
 
-# Commands. Set by init()
-commands=()
+
 
 # The version to update to
 target_version=
@@ -801,7 +801,6 @@ load_get_deps() {
     err_msg "Failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
 
-  # shellcheck source=/dev/null
   source \
   <(curl -fsSL "$get_deps_url" &)
   ec=$?;
@@ -812,14 +811,13 @@ load_get_deps_locally() {
   local this_script_dir
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
 
-  # shellcheck source=/dev/null
   if ! source "$this_script_dir/lib/get-deps.sh"; then
     "Failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
   fi
 }
 
-validate_options() {
+validate_long_options() {
   local failed options;
 
   if ! declare -f "list_long_options" > /dev/null; then
@@ -828,8 +826,10 @@ validate_options() {
   fi
 
   options="$(list_long_options)"
+
   for option in $options; do
-    if [[ ! "${global_supported_options[*]}" =~ $option ]]; then
+    option=" ${option} "
+    if [[ ! " ${global_supported_options[*]} " =~ $option ]]; then
         echo -e "${c_norm_prob}Unsupported long option: ${c_pass}$option${c_e}"
         failed=1
     fi
@@ -848,7 +848,7 @@ init() {
   # Enable color support
   handle_colors
 
-  # Set potential messages
+  # Potential messages
   gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
   e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
@@ -857,13 +857,13 @@ init() {
   e_command="${c_norm_prob}Unsupported Command:${c_e}"
   note_prefix="${c_file_name}Notice:${c_e}"
 
-  # Fail if there is no existing gitpod-laravel-starter to update.
+  # Return an error if there is no existing gitpod-laravel-starter to update.
   # TODO: make this work for older versions that don't have a .gp folder
   [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
 
   # Set and validate global options 
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! validate_options; then abort_msg && return 1; fi
+  if ! validate_long_options; then abort_msg && return 1; fi
 
   # Commands and short options are illegal so handle them quick and dirty style
   for arg in "${script_args[@]}"; do
@@ -881,10 +881,9 @@ init() {
     
     # A bare double dash is an illegal option
     [[ $arg == '--' ]] && err_msg "$e_illegal_option ${c_pass}$arg${c_e}" && abort_msg && return 1
-
   done
   
-  # Show fancy header, implicitly indicate init() was a success ;)
+  # Show fancy header (an implicity indication that init() was successful ;)
   gls_header 'updater'
 }
 
@@ -892,24 +891,24 @@ init() {
 # Description:
 # Main routine
 # Order specific:
-#   1. Load get-deps.sh as it contains get_deps() which is used to load the rest of the dependencies
-#   2. Load the rest of the dependencies using get_deps()
-#   3. Initialize
-#   4. Update. Clean up if the update fails
+#   1. Set local aand global values
+#   2. Load get-deps.sh, it contains get_deps() which is used to load the rest of the dependencies
+#   3. Load the rest of the dependencies using get_deps()
+#   3. Initialize: call init()
+#   4. Update: call update(). Clean up if the update fails
 #
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script.
+# init() and update() cleanup after themselves
 main() {
   local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh' 'long-option.sh')
   local possible_option=(); 
   local abort="update aborted"
   local ec
 
-  # Set globals. Never mutate them.
+  # Never mutate these
   script_args=("$@");
   global_supported_options=(--help --debug --load-deps-locally --manifest)
-
-
 
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
