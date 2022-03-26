@@ -809,6 +809,7 @@ load_get_deps() {
 
 load_get_deps_locally() {
   local this_script_dir
+
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
 
   if ! source "$this_script_dir/lib/get-deps.sh"; then
@@ -817,7 +818,7 @@ load_get_deps_locally() {
   fi
 }
 
-validate_long_options() {
+valid_long_options() {
   local failed options;
 
   if ! declare -f "list_long_options" > /dev/null; then
@@ -838,22 +839,42 @@ validate_long_options() {
   [[ -n $failed ]] && return 1 || return 0
 }
 
+# Commands and short options are illegal so handle them quick and dirty style
+valid_arguments() {
+  local e_bad_opt e_bad_short_opt
+  e_bad_short_opt="${c_norm_prob}Illegal short option:${c_e}"
+  e_bad_opt="${c_norm_prob}Illegal option:${c_e}"
+
+  for arg in "${script_args[@]}"; do
+    # Regex: Short options are a single dash or start with a single dash but not a double dash
+    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
+    # Regex: Commands do not start with a dash
+    [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
+    # A bare double dash is also an illegal option
+    [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+  done
+}
+
 ### init ###
 # Description:
-# Validates an existing installation of gls and initializes
-# the project so the update routine can be called
+# Enables colors, validates all arguments passed to this script,
+# sets long options and sets any global strings that need to be colorized
+# A fancy header is written to stdout if this function succeeds ;)
+# Returns 0 if successful, returns 1 if there are any errors
+# Also returns 1 if an existing installations of gitpod-laravel-starter is detected
+#
+# Note:
+# This function can only be called once.
+# Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_illegal_short_option e_illegal_option e_command
+  local arg gls e_not_installed e_long_options e_command
   
   # Enable color support
   handle_colors
 
-  # Potential messages
   gls="${c_norm_prob}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm_prob}"
   e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not found${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
-  e_illegal_short_option="${c_norm_prob}Illegal short option:${c_e}"
-  e_illegal_option="${c_norm_prob}Illegal option:${c_e}"
   e_command="${c_norm_prob}Unsupported Command:${c_e}"
   note_prefix="${c_file_name}Notice:${c_e}"
 
@@ -861,29 +882,10 @@ init() {
   # TODO: make this work for older versions that don't have a .gp folder
   [[ ! -d '.gp' ]] && err_msg "$e_not_installed" && abort_msg && return 1
 
-  # Set and validate global options 
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! validate_long_options; then abort_msg && return 1; fi
+  if ! valid_long_options; then abort_msg && return 1; fi
+  if ! valid_arguments; then abort_msg && return 1; fi
 
-  # Commands and short options are illegal so handle them quick and dirty style
-  for arg in "${script_args[@]}"; do
-    # Regex: Short options are a single dash or start with a single dash but not a double dash
-    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] \
-      && err_msg "$e_illegal_short_option ${c_pass}$arg${c_e}" \
-      && abort_msg \
-      && return 1
-
-    # Regex: Commands do not start with a dash
-    [[ $arg =~ ^[^\-] ]] \
-      && err_msg "$e_command ${c_pass}$arg${c_e}" \
-      && abort_msg \
-      && return 1
-    
-    # A bare double dash is an illegal option
-    [[ $arg == '--' ]] && err_msg "$e_illegal_option ${c_pass}$arg${c_e}" && abort_msg && return 1
-  done
-  
-  # Show fancy header (an implicity indication that init() was successful ;)
   gls_header 'updater'
 }
 
