@@ -904,7 +904,7 @@ init() {
 # init() and update() cleanup after themselves
 main() {
   local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh' 'long-option.sh')
-  local possible_option=(); 
+  local possible_option=() 
   local abort="update aborted"
   local ec
 
