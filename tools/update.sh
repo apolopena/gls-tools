@@ -22,8 +22,14 @@
 # The arguments passed to this script. Set from main().
 script_args=()
 
-# Supported options. Set in main().
-global_supported_options=()
+# Supported options.
+global_supported_options=(
+  --help
+  --debug 
+  --load-deps-locally
+  --manifest
+  --strict
+)
 
 # The version to update to
 target_version=
@@ -115,86 +121,6 @@ failed_copy_to_root_msg() {
 yes_no() {
   echo -e \
   "${c_e}${c_prompt}(${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_prompt})${c_e}"
-}
-
-### is_script_arg ###
-# Description:
-# returns 0 if the script arguments contain $1, returns 1 otherwise
-# Globals:
-# $script_args
-is_script_arg() {
-  printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$1"
-}
-### is_subpath ###
-# Description:
-# returns 0 if ($2) is a subpath of ($1)
-# return 1 otherwise
-is_subpath() {
-  if [[ $(realpath --relative-base="$1" -- "$2")  =~ ^/ ]]; then
-    # $2 is NOT subpath of $1
-    return 1
-  else
-    # $2 is subpath of $1
-    return 0
-  fi
-}
-
-### split_ver ###
-# Description:
-# splits a version number ($1) into three numbers delimited by a space
-#
-# Notes:
-# Assumes the format of the version number will be:
-# <any # of digits>.<any # of digits>.<any # of digits>
-#
-# Usage:
-# split_ver 6.31.140
-# # outputs: 6 31 140 
-split_ver() {
-  local first mid last
-  first=${1%%.*}; last=${1##*.}; mid=${1##$first.}; mid=${mid%%.$last}
-  echo "$first $mid $last"
-}
-
-
-### comp_ver_lt ###
-# Description:
-# Compares version number ($1) to version number ($2)
-# Echos 1 if version number ($1) is less than version number ($2)
-# Echos 0 if version number ($1) is greater than or equal to version number ($2)
-#
-# Notes:
-# Assumes the format of the version number will be:
-# <any # of digits>.<any # of digits>.<any # of digits>
-#
-# Usage:
-# comp_ver_lt 2.28.10 2.28.9
-# # outputs: 1
-# comp_ver_lt 0.0.1 0.0.0
-# # outputs: 0
-comp_ver_lt() {
-  local v1=()
-  local v2=()
-  IFS=" " read -r -a v1 <<< "$(split_ver "$1")"
-  IFS=" " read -r -a v2 <<< "$(split_ver "$2")"
-  [[ ${v1[0]} -lt ${v2[0]} ]] && echo 1 && exit
-  [[ ${v1[0]} -eq ${v2[0]} ]] && \
-  [[ ${v1[1]} -lt ${v2[1]} ]] && echo 1 && exit
-  [[ ${v1[0]} -eq ${v2[0]} ]] && \
-  [[ ${v1[1]} -eq ${v2[1]} ]] && \
-  [[ ${v1[2]} -lt ${v2[2]} ]] && echo 1 && exit
-  echo 0
-}
-
-### gls_verion ###
-# Description:
-# Parses the first occurrence of a major.minor.patch version number from a file ($1)
-gls_version() {
-  local ver=
-  ver="$(grep -oE "([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?" "$1" | head -n 1)"
-  [[ -z $ver ]] && return 1
-  echo "$ver"
-  return 0
 }
 
 ### default_manifest ###
@@ -405,6 +331,7 @@ set_directives() {
 # $data_recommend_backup: calls the function: recommend_backup, for each item in the array
 # $data_deletes: calls the function: delete, for each item in the array
 execute_directives() {
+  local e_pre="${c_norm_prob}execute_directives() internal error: Failed to"
   if [[ $1 == '--debug' ]]; then
     echo "DIRECTIVE KEEP:"
     [[ ${#data_keeps[@]} == 0 ]] && echo -e "\tnothing to process"
@@ -412,7 +339,10 @@ execute_directives() {
   for (( i=0; i<${#data_keeps[@]}; i++ ))
   do
     [[ $1 == '--debug' ]] && echo -e "\tprocessing ${data_keeps[$i]}"
-    if ! keep "${data_keeps[$i]}"; then return 1; fi
+    if ! keep "${data_keeps[$i]}"; then
+      err_msg "$e_pre keep ${c_uri}${data_keeps[$i]}${c_e}"
+      return 1
+    fi
   done
 
   if [[ $1 == '--debug' ]]; then
@@ -422,7 +352,10 @@ execute_directives() {
   for (( i=0; i<${#data_backups[@]}; i++ ))
   do
     [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${data_backups[$i]}"
-    if ! recommend_backup "${data_backups[$i]}"; then return 1; fi
+    if ! recommend_backup "${data_backups[$i]}"; then
+      err_msg "$e_pre reccomend-backup for ${c_uri}${data_backups[$i]}${c_e}"
+      return 1
+    fi
   done
 }
 
@@ -576,7 +509,7 @@ recommend_backup() {
 
   # Exit gracefully if file is specificed in the manifest but not present in the original or the latest
   # Also output a warning if the --strict option is used.
-  if is_script_arg '--strict'; then
+  if has_long_option --strict; then
     echo "--strict used and should be aborting the backup with a warning"
     [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}"
     [[ ! -f "$target_dir/$1" ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}${target_dir}/${1}${c_uri}"
@@ -683,14 +616,6 @@ download_latest() {
   cd "$project_root" || return 1
 }
 
-### cleanup ###
-# Description:
-# Clean up after the update
-cleanup() {
-  return 0
-  #[[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
-}
-
 ### update ###
 # Description:
 # Performs the update by calling all the proper routines in the proper order
@@ -698,7 +623,8 @@ cleanup() {
 # Handles errors for each routine called or action made
 update() {
   local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c
-  local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc
+  local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
+  e_fail_prefix="${c_norm_prob}update() internal error: Failed to"
   e1="${c_norm_prob}Version mismatch${c_e}"
   warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
   warn_msg1b="${c_norm_prob}Some old files may remain but should not cause any issues${c_e}"
@@ -745,7 +671,7 @@ update() {
   update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
   update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
   echo -e "${c_s_bold}${c_pass}START: ${c_e}$update_msg1 $update_msg2"
-  if ! set_directives; then abort_msg && return 1; fi
+  if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
 
@@ -891,6 +817,10 @@ gls_installation_exists() {
   return 1
 }
 
+help() {
+  echo -e "update-gls command line tool\n\t help TBD GOES HERE"
+}
+
 ### init ###
 # Description:
 # Enables colors, validates all arguments passed to this script,
@@ -924,6 +854,34 @@ init() {
   gls_header 'updater'
 }
 
+### cleanup ###
+# Description:
+# Recursively removes any temporary directories
+#
+# WARNING:
+# This function assumes that this script will be run from the project root
+# If this script is not run from the project root then any directories 
+# outside the project root that have the same name as the temporary directories
+# that this script creates will be deleted
+cleanup() {
+  local e_msg1 e_msg1b
+
+  e_msg1="${c_norm_prob}cleanup() failed:\n\t${c_uri}$tmp_dir${c_e}"
+  e_msg1b="\n\t${c_norm_prob}is not a sub directory of:\n\t${c_uri}$project_root${c_e}"
+
+  if is_subpath "$project_root" "$tmp_dir"; then
+    [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
+  else
+    warn_msg "${e_msg1}${e_msg1b}" && exit 1
+  fi
+
+  find . -maxdepth 1 -type d -name "GLS_BACKUPS_v*" | \
+  while read -r dir_to_delete; do
+    [[ -d $dir_to_delete ]] && rm -rf "$dir_to_delete"
+  done 
+  
+}
+
 ### main ###
 # Description:
 # Main routine
@@ -943,9 +901,11 @@ main() {
   local abort="update aborted"
   local ec
 
-  # Never mutate these
+  # Never mutate the script args
   script_args=("$@");
-  global_supported_options=(--help --debug --load-deps-locally --manifest)
+
+  # Handle the --help option first before anything else as there is no need to load dependencies for this
+  [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
 
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
@@ -958,9 +918,10 @@ main() {
   # Load dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
-  # Initialize, update and cleanup only on failure (update() cleans up after itself if succeeds)
+  # Initialize, update and cleanup
   if ! init; then exit 1; fi
   if ! update; then cleanup; exit 1; fi
+  cleanup
 }
 # END: functions
 
