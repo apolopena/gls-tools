@@ -61,7 +61,7 @@ gp_df_only_cache_buster_changed=no
 note_prefix=
 
 # Keep shellchack happy by predefining the colors set by lib/colors.sh
-c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_warn2=; c_fail=; c_file=;
+c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 # END: Globals
@@ -905,7 +905,7 @@ gls_installation_exists() {
 # This function can only be called once.
 # Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_command nothing_m script_m
+  local arg gls e_not_installed e_long_options e_command nothing_m
   
   handle_colors
 
