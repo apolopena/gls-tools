@@ -17,11 +17,12 @@
 
 
 # BEGIN: Globals
+# Never mutate globals them once they are set unless they are a flag
 
-# This script arguments.Set from main(). Never mutate them.
+# The arguments passed to this script. Set from main().
 script_args=()
 
-# Supported options.Set in main(). Never mutate them.
+# Supported options. Set in main().
 global_supported_options=()
 
 # The version to update to
