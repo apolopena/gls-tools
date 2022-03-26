@@ -42,7 +42,8 @@ generate_manifest() {
 
   # Move into the temp working directory and generate the manifest
   if ! cd "$tmp_dir"; then echo "Could not cd into: $(pwd)/$tmp_dir"; return 1; fi
-  directories="$(find "$(pwd)" -maxdepth 1 -mindepth 1 -type d | grep -v '.git')"
+  directories="$(find "$(pwd)" -maxdepth 1 -mindepth 1 -type d | grep -v '.gp' | grep -v '.theia')"
+
   files="$(find "$(pwd)" -maxdepth 1 -mindepth 1 -type f | grep -v "$manifest")"
   keep_file=".gp/bash/init-project.sh"
   if [[ -f $keep_file ]]; then

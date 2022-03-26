@@ -466,8 +466,7 @@ recommend_backup() {
     orig_loc="$project_root$1"
     [[ ! -d $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_e}" && return 0
 
-    # Skip backing up the directory if the original and the target exist and 
-    # there are no differences between them
+    # Skip backing up the directory if there are no differences between the current and the latest
     [[ -d $orig_loc && -d "${target_dir}${1}" ]] \
     && [[ -z $(diff -qr "$orig_loc" "${target_dir}${1}") ]] && return 0
 
@@ -532,8 +531,7 @@ recommend_backup() {
     fi
   fi
 
-  # Skip backing up the files if there are no differences between them
-  # the current and the latest
+  # Skip backing up the file if there are no differences between the current and the latest
   [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
 
   # For security proceed only if the target is within the project root
@@ -624,6 +622,7 @@ download_latest() {
 update() {
   local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c
   local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
+
   e_fail_prefix="${c_norm_prob}update() internal error: Failed to"
   e1="${c_norm_prob}Version mismatch${c_e}"
   warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
@@ -675,9 +674,13 @@ update() {
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
 
-  # BEGIN: update by deleting the old and copying over the new
-  local root_files=(".gitpod.yml" ".gitattributes" ".npmrc" ".gitignore") # TODO: rsync this since cp cant do a dry run
-  local root_dirs=(".gp" ".vscode" ".theia") # TODO: rsync this since cp cant do a dry run
+  # BEGIN: Update by deleting the old (orig) and coping over the new (target)
+
+  # Latest files to copy from target (latest) to orig (current)
+  local root_files=(".gitpod.yml" ".gitattributes" ".npmrc" ".gitignore")
+
+  # Latest directories to copy from target (latest) to orig (current)
+  local root_dirs=(".gp" ".vscode" ".github")
 
   for i in "${!root_files[@]}"; do
     if [[ -f ${root_files[$i]} ]]; then
@@ -689,11 +692,14 @@ update() {
 
   [[ $gp_df_only_cache_buster_changed == no && -f .gitpod.Dockerfile ]] && rm .gitpod.Dockerfile
 
+  # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
+  [[ -d .theia ]] && rm -rf .theia
+
   if ! rm -rf .gp; then
     warn_msg "$warn_msg1\n\t$warn_msg1b"
   fi
 
-  e1="${c_norm_prob}You will need to manually copy it from  the repository: ${c_url}$gls_url${c_e}"
+  e1="${c_norm_prob}You will need to manually copy it from the repository: ${c_url}$gls_url${c_e}"
 
   for i in "${!root_dirs[@]}"; do
     loc="$target_dir/${root_dirs[$1]}"
@@ -715,9 +721,11 @@ update() {
       err_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}")/t$e1"
     fi
   fi
-  echo -e "${c_s_bold}${c_pass}DONE:${c_norm_b} $update_msg1 $update_msg2"
+
+  echo -e "${c_s_bold}${c_pass}FINISHED:${c_norm_b} $update_msg1 $update_msg2"
+  # END: Update by deleting the old (orig) and coping over the new (target)
+
   return 0
-  # END: update by deleting the old and copying over the new
 }
 
 ### load_get_deps ###
@@ -856,13 +864,13 @@ init() {
 
 ### cleanup ###
 # Description:
-# Recursively removes any temporary directories
+# Recursively removes any temporary directories this script may have created
 #
 # WARNING:
 # This function assumes that this script will be run from the project root
 # If this script is not run from the project root then any directories 
 # outside the project root that have the same name as the temporary directories
-# that this script creates will be deleted
+# that this script creates will most likely be deleted
 cleanup() {
   local e_msg1 e_msg1b
 
@@ -879,7 +887,6 @@ cleanup() {
   while read -r dir_to_delete; do
     [[ -d $dir_to_delete ]] && rm -rf "$dir_to_delete"
   done 
-  
 }
 
 ### main ###
