@@ -31,7 +31,7 @@ supported_command() {
 }
 
 gls_version() {
-  echo "1.0.0"
+  echo "0.0.1"
 }
 
 gls_help() {
