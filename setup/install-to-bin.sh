@@ -50,9 +50,7 @@ install() {
     [[ $(bash gls.sh --version) == $(gls --version ) ]] && echo "gls is already up to date" && return 1
   fi
 
-  
-
-  # Users should not have access to gls internal so remove them
+  # Remove tools/internal so users don't have access to internal tools.
   [[ -d tools/internal ]] && rm -rf tools/internal
 
   # Rename tools directory to .gls-tools to reduce the chances of it getting ovewritten by another process
