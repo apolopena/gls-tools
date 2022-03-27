@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# update-gls.sh
+# update.sh
 #
 # Description:
 # Updates an existing project build on gitpod-laravel-starter to the latest version.
@@ -825,6 +825,9 @@ gls_installation_exists() {
   return 1
 }
 
+### help ###
+# Description:
+# Echoes the help text to stdout 
 help() {
   echo -e "update-gls command line tool\n\t help TBD GOES HERE"
 }
@@ -842,19 +845,26 @@ help() {
 # This function can only be called once.
 # Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_command nothing_m
+  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m run_l_m
   
   handle_colors
 
   gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
   e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not detected${c_e}"
   curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh)"
-  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead\n\tRun: ${c_uri}$curl_m${c_e}"
+  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead either"
+  run_r_m="Run remotely: ${c_uri}$curl_m${c_e}"
+  run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls install${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
   e_command="${c_norm_prob}Unsupported Command:${c_e}"
   note_prefix="${c_file_name}Notice:${c_e}"
 
-  if ! gls_installation_exists; then err_msg "$e_not_installed\n\t$nothing_m" && abort_msg && return 1; fi
+  if ! gls_installation_exists; then 
+    err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
+    abort_msg
+    return 1; 
+  fi
+
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
   if ! validate_long_options; then echo bad long options; abort_msg && return 1; fi
   if ! validate_arguments; then echo bad arguments; abort_msg && return 1; fi
@@ -908,10 +918,10 @@ main() {
   local abort="update aborted"
   local ec
 
-  # Never mutate the script args
+  # Set this global once and never touch it again
   script_args=("$@");
 
-  # Handle the --help option first before anything else as there is no need to load dependencies for this
+  # Process the --help directive first since it requires no dependencies to do so
   [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
 
   # Load the loader (get-deps.sh)
@@ -922,7 +932,7 @@ main() {
     load_get_deps
   fi
 
-  # Load dependencies
+  # Now that the loader is loader use it to load the rest of the dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
   # Initialize, update and cleanup
