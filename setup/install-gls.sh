@@ -4,16 +4,18 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# install-to-bin.sh
+# install-gls.sh
 #
 # Description:
-# Installs the lastest releast of gls-tools as a executable  /usr/local/bin
+# Installs the lastest release of all the public gls-tools suite as a single executable to /usr/local/bin
 #
 # Usage example:
-# sudo bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/setup/install-to-bin.sh)
+# curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/setup/install-gls.sh | sudo bash
 #
 # Note: 
 # Requires bash >= 4 and must be run as root
+# This is just as secure as any installer since all code in this script and the scripts it sources
+# are encapsulated by functions 
 
 download_latest_release() {
   local loc url tarball_url
