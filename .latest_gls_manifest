@@ -6,15 +6,12 @@
 
 [recommend-backup]
 .gitignore
-LICENSE
-README.md
 .gitattributes
 starter.ini
 .npmrc
 .gitpod.yml
 .gitpod.Dockerfile
-CHANGELOG.md
-/.gp
+/.github
 /.vscode
 
 
