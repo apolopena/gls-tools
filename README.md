@@ -10,7 +10,7 @@ NONE OF THESE TOOLS ARE READY FOR PRODUCION USE. THIS LINE WILL BE REMOVED PRIOR
 
 ## ⚡ Install `gls`
 You can install `gls` to `/usr/local/bin` which is a tool that runs all the non internal `gls-tools` scripts locally on the filesystem and is complete with `--help`, `--version` and command information. 
-`gls` must be installed as root since it installs to your `/usr/local/bin`. This is safe as any installer and perhaps more safe than binary installers since all the code in this repository encapsualtes it's code into functions and is transparent open source. Please feel free to inspect all the code in this repository. Contributions and suggestions are always welcome.
+`gls` must be installed as root since it installs to your `/usr/local/bin`. This is safe as any installer. Please feel free to inspect all the code in this repository. Contributions and suggestions are always welcome.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/setup/install-gls.sh | sudo bash
 ```
