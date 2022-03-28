@@ -74,14 +74,14 @@ install() {
     mv .gls-tools /usr/local/bin/.gls-tools
   fi
 
-  echo "gls version $(gls --version) has been $verb in /usr/local/bin"
+  echo "gls version $(gls --version) has been $verb"
   echo "For more information run: gls --help"
 }
 
 main() {
-  local tmp_dir e_fail_cd="install-to-bin.sh failed to cd into"
+  local tmp_dir e_fail_cd="install-gls.sh failed to cd into"
   
-  [[ $(id -u) -ne 0 ]] && echo "must be run as root" && exit 1
+  [[ $(id -u) -ne 0 ]] && echo "install-gls.sh must be run as root" && exit 1
 
   tmp_dir="/tmp/gls-install-as-bin-$(date +"%Y%m%d%H%M%S")"
   mkdir "$tmp_dir" && if ! cd "$tmp_dir"; then echo "$e_fail_cd $tmp_dir" && exit 1; fi
