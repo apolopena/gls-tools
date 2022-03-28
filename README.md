@@ -1,25 +1,28 @@
-# gls-tools  💻
-Bash scripted command line tools for updating, installing, uninstalling and testing [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
+# 💻 gls-tools
+## Bash scripted command line tools for updating, installing, uninstalling and testing [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter)
 
-All `gls-tools` scripts should be executed through bash via a `curl` process substitution.
+NONE OF THESE TOOLS ARE READY FOR PRODUCION USE. THIS LINE WILL BE REMOVED PRIOR TO THE FIRST STABLE RELEASE.
 
-NONE OF THESE TOOLS ARE READY FOR PUBLIC USE. THIS LINE WILL BE REMOVED PRIOR TO THE INITIAL RELEASE.
-
-If you would like to use `wget` or `fetch` to execute `gls-tools` scripts you can but the implemenation for that is for that is left up to you.
-#### Note: _Bash 4.0 or higher is required._ If you run these scripts outside of Gitpod and you are using a mac you will need to [update your version of bash](https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x)
+#### Note: _Bash 4.0 or higher is required. If you run these scripts outside of Gitpod and you are using a mac you will need to [update your version of bash](https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x)_
 <hr>
 
 <br />
 
-## Public tools
-These scripts are for anyone to use. 
+## ⚡ Install `gls`
+You can install `gls` to `/usr/local/bin` which is a tool that runs all the non internal `gls-tools` scripts locally on the filesystem and is complete with `--help`, `--version` and command information. 
+`gls` must be installed as root since it installs to your `/usr/local/bin`. This is safe as any installer and perhaps more safe than binary installers since all the code in this repository encapsualtes it's code into functions and is transparent open source. Please feel free to inspect all the code in this repository. Contributions and suggestions are always welcome.
+```bash
+curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/setup/install-gls.sh | sudo bash
+```
+## Using `gls-tools` individually
+Most of the operations these scripts perform are one time tasks they are best done remotely using `curl` `wget` or `fetch` however these tool scripts can also be put into your `/usr/loca/bin` if you find yourself using them often.
+
+If you would like to use `wget` or `fetch` to execute `gls-tools` tool scripts you can but the implemenation for that is for that is left up to you. `curl` commands are provided in the section for each script.
 
 <br />
 
-### 📜`tools/update.sh`
-_Only use `tools/update.sh` on an empty project or a project built with Laravel._
-
-<br />
+### 📜`tools/install.sh`
+_Only use `tools/install.sh` on an empty project or an existing project built with Laravel._
 
 > Interactively install the latest version of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). If you have a Laravel project already built then this script will essentially 'Gitpodify` your current project.
 ```bash
@@ -31,6 +34,9 @@ _Only use `tools/update.sh` on an empty project or a project built with Laravel.
  yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
 
+### 📜`tools/update.sh`
+_Only use `tools/update.sh` with an existing project built on a previous version `gitpod-laravel-starter`._
+
 > Interactively update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
 ```bash
  bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
@@ -41,7 +47,14 @@ _Only use `tools/update.sh` on an empty project or a project built with Laravel.
  yes | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
  ```
 
-  > Generate a manifest for the latest version of  [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) for `install.sh` and `update.sh`
+  > Force update a project built with [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) to overwrite all files by skipping all recommended backups. Supports all versions of [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter) >= `0.0.4`
+```bash
+ yes n | bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh ) 
+ ```
+
+### 📜`tools/manifest.sh`
+
+  > Generate a manifest for the latest version of  [`gitpod-laravel-starter`](https://github.com/apolopena/gitpod-laravel-starter). A manifest can be used to control which files are kept and recommended for backup . This is currently only semi-functional.
 ```bash
  bash <( curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/manifest.sh ) 
  ```
