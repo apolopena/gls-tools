@@ -13,9 +13,7 @@
 # curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/setup/install-gls.sh | sudo bash
 #
 # Note: 
-# Requires bash >= 4 and must be run as root
-# This is just as secure as any installer since all code in this script and the scripts it sources
-# are encapsulated by functions 
+# Requires bash >= 4 and must be run as root 
 
 download_latest_release() {
   local loc url tarball_url
