@@ -48,14 +48,19 @@
 # keep() # requires: $project_root, $target_dir, $note_prefix, err_msg(), is_subpath(), yes_no()
 # recommend_backup() # requires: $project_root, $backups_dir, err_msg(), is_subpath(), yes_no()
 
-
 __data_keeps=()
-__data_bakcups=()
-note_prefix="${c_file_name}Notice:${c_e}"
+__data_backups=()
+
+# Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile
+gp_df_only_cache_buster_changed=no
+# Satisfy shellcheck since this is a varaible that this script doesn't actually use
+: "$gp_df_only_cache_buster_changed"
 
 # Keep shellchack happy by predefining the colors we use here. See lib/colors.sh
 c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
+
+
 
 ### _directives_err_msg ###
 # Description:
@@ -81,8 +86,20 @@ starter.ini
 .npmrc
 .gitpod.yml
 .gitpod.Dockerfile
+/foobar.test
 /.github
 /.vscode"
+}
+
+### ___is_subpath ###
+# Description:
+# Internal function that returns 0 if ($2) is a subpath of ($1), returns 1 otherwise
+___is_subpath() {
+  if [[ $(realpath --relative-base="$1" -- "$2")  =~ ^/ ]]; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 ### set_directives ###
@@ -99,6 +116,7 @@ starter.ini
 set_directives() {
   local err_pre="${c_norm_prob}set_directives() internal error:${c_e}"
   local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifestrr"
+  local note_prefix="${c_file_name}Notice:${c_e}"
   local chunk manifest manifest_file ec msg1 msg1
 
   if [[ -n $1 && ! -d $1 ]]; then
@@ -149,11 +167,6 @@ set_directives() {
   else
     echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}recommend-backup${c_e}"
   fi
-  
-  # temp for debugging
-  echo -e "directives.sh successfull parsed the manifest into directive chunks"
-  echo -e "keeps array is:\n${__data_keeps[*]}"
-  echo -e "data_backups array is:\n${__data_backups[*]}"
 
   return 0
 }
@@ -201,4 +214,317 @@ parse_manifest_chunk() {
 
   # If we got this far we can parse and return success no matter what
   echo "$2" | sed -n '/\['"$1"'\]/,/^$/p' | grep -v "\[$1\]"; return 0
+}
+
+### execute_directives ###
+# Description:
+# Runs a function for each item in each global directive array
+# Outputs debugging info if --debug is passed in ($1)
+#
+# Note: 
+# Each function called will make system calls that affect the filesystem
+# This function should be error handled
+#
+# Requires Global Arrays:
+# $__data_keeps: calls the function: keep, for each item in the array
+# $__data_backups: calls the function: recommend_backup, for each item in the array
+execute_directives() {
+  local e_pre="${c_norm_prob}execute_directives() internal error: Failed to"
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE KEEP:"
+    [[ ${#__data_keeps[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
+  for (( i=0; i<${#__data_keeps[@]}; i++ ))
+  do
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing ${__data_keeps[$i]}"
+    if ! keep "${__data_keeps[$i]}"; then
+      _directives_err_msg "$e_pre keep ${c_uri}${__data_keeps[$i]}${c_e}"
+      return 1
+    fi
+  done
+
+  if [[ $1 == '--debug' ]]; then
+    echo "DIRECTIVE RECOMMEND TO BACKUP:"
+    [[ ${#__data_backups[@]} == 0 ]] && echo -e "\tnothing to process"
+  fi
+  for (( i=0; i<${#__data_backups[@]}; i++ ))
+  do
+    [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${__data_backups[$i]}"
+    if ! recommend_backup "${__data_backups[$i]}"; then
+      _directives_err_msg "$e_pre reccomend-backup for ${c_uri}${__data_backups[$i]}${c_e}"
+      return 1
+    fi
+  done
+}
+
+### keep ###
+# Description:
+# Persists a file ($1) or directory ($1) from the original (base) version to the updated (target) version
+# by copying a file or directory (recursively) from an original location ($project_root/$1)
+# to a target location ($target_dir/$1).
+# The target location will be deleted (recursively via rm -rf) prior to the copy.
+# If ($1) starts with a / it is considered a directory
+# If ($1) does not start with a / then it is considered a file
+#
+# Note:
+# The global
+# This function should be error handled by the caller
+# This function will return an error if the target location is not a subpath of $project_root
+# If the global varaible $base_version is not set then it will be set locally to the string: unknown
+#
+# Requires Globals:
+# Will return exit code 1 if any of below global variables are not present or are not valid directories
+# $project_root $target_dir 
+# $project_root $target_dir $note_prefix
+keep() {
+  local name orig_loc target_loc err_pre e1_pre note1 note1b note1c orig_ver_text
+  local note_prefix="${c_file_name}Notice:${c_e}"
+
+  name="${c_file_name}keep()${c_e}"
+  err_pre="${c_norm_prob}Failed to ${c_e}$name"
+  e1_pre="${c_norm_prob}Could not find${c_e}"
+
+  if [[ -n $base_version ]]; then
+    orig_ver_text="${c_number}v$base_version${c_e}"
+  else
+    orig_ver_text="${c_number}v unknown${c_e}"
+  fi
+  
+  if [[ -z $project_root ]]; then
+    _directives_err_msg "$name${c_norm_prob}: required global variable \$project_root${c_e}"
+    return 1
+  fi
+
+  if [[ -z $target_dir ]]; then
+    _directives_err_msg "$name${c_norm_prob}: required global variable \$target_dir${c_e}"
+    return 1
+  fi
+
+  if [[ ! -d $project_root ]]; then
+    _directives_err_msg "$name${c_norm_prob}: \$project_root is not a directory: ${c_uri} $project_root${c_e}"
+    return 1
+  fi
+
+  if [[ ! -d $target_dir ]]; then
+    _directives_err_msg "$name ${c_norm_prob}\$target_dir is not a valid directory: ${c_uri} $target_dir${c_e}"
+    return 1
+  fi
+
+  if [[ -z $1 ]]; then
+    _directives_err_msg "$err_pre\n\t${c_norm_prob}Missing argument. Nothing to keep.${c_e}"
+    return 1
+  fi
+
+  # It's a directory
+  if [[ $1 =~ ^\/ ]]; then
+    orig_loc="$project_root$1"
+    [[ ! -d $orig_loc ]] \
+      && _directives_err_msg "$err_pre\n\t$e1_pre ${c_norm_prob}directory ${c_uri}$orig_loc${c_e}" \
+      && return 1
+    target_loc="$target_dir$1"
+    
+    # Skip keeping the directory if the original and target exists and there are no differences
+    [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
+
+    # For security $target_loc must be a subpath of $project_root
+    if ___is_subpath "$project_root" "$target_loc"; then
+      note1="$note_prefix ${c_file}Recursively kept original ($orig_ver_text${c_file}) directory${c_e}"
+      note1b="${c_uri}$orig_loc${c_e}\n\t${c_file}as per the directive set in the updater manifest\n\t"
+      note1c="This action will result in some of the latest changes being omitted${c_e}"
+      echo -e "${note1} ${note1b}${note1c}"
+      rm -rf "$target_loc" && cp -R "$orig_loc" "$target_loc"
+      return $?
+    fi
+    echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
+    return 1
+  fi
+
+  # It's a file
+  orig_loc="$project_root/$1"
+  [[ ! -f $orig_loc ]] \
+    && _directives_err_msg "$err_pre\n\t$e1_pre${c_norm_prob} file ${c_uri}$orig_loc${c_e}" \
+    && return 1
+  target_loc="$target_dir/$1"
+
+  # Skip keeping the file if the original and target exists and there are no differences
+  [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
+
+  # For security $target_loc must be a subpath of $project_root
+  if ___is_subpath "$project_root" "$target_loc"; then
+    note1="$note_prefix ${c_file}Kept original ($orig_ver_text${c_file}) file${c_e}"
+    note1b="${c_uri}$orig_loc\n\t${c_file}as per the directive set in the updater manifest\n\t"
+    note1c="This action will result in some of the latest changes being omitted${c_e}"
+    if [[ $(basename "$orig_loc") == 'init-project.sh' ]]; then
+      echo -e "${c_norm}Keeping project specific file ${c_uri}$orig_loc${c_e}"
+    else
+      echo -e "${note1} ${note1b}${note1c}"
+    fi
+    cp "$orig_loc" "$target_loc"
+    return $?
+  fi
+  echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
+  return 1
+}
+
+### recommend_backup ###
+# Description:
+# 
+# Requires Globals:
+# $project_root $backups_dir
+recommend_backup() {
+  local name orig_loc target_loc err_pre e1_pre msg b_msg1 b_msg2 b_msg2b b_msg3 msg warn1 warn1b cb yn
+  local question instr_file input decor="----------------------------------------------"
+  local note_prefix="${c_file_name}Notice:${c_e}"
+
+  yn="${c_e}${c_prompt}(${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_prompt})${c_e}"
+  name="${c_file_name}recommend_backup()${c_e}"
+  err_pre="${c_norm_prob}Failed to ${c_e}$name"
+  e1_pre="${c_norm_prob}Could not find${c_e}"
+  b_msg1="\n${c_file}There is probably project specific data in"
+  question="${c_prompt}Would you like perform the backup now ${yn}${c_prompt}? ${c_e}"
+  warn1="$note_prefix ${c_norm}Answering no to the question below${c_e}"
+  warn1b="${c_norm}will most likely result in the loss of project specific data.${c_e}"
+
+  if [[ -z $project_root ]]; then
+    _directives_err_msg "$name${c_norm_prob}: required global variable \$project_root${c_e}"
+    return 1
+  fi
+
+  if [[ -z $backups_dir ]]; then
+    _directives_err_msg "$name${c_norm_prob}: required global variable \$backups_dir${c_e}"
+    return 1
+  fi
+
+  if [[ ! -d $project_root ]]; then
+    _directives_err_msg "$name${c_norm_prob}: \$project_root is not a directory: ${c_uri} $project_root${c_e}"
+    return 1
+  fi
+
+  if [[ ! -d $backups_dir ]]; then
+    _directives_err_msg "$name ${c_norm_prob}\$backups_dir is not a valid directory: ${c_uri} $target_dir${c_e}"
+    return 1
+  fi
+
+  if [[ -z $1 ]]; then
+    _directives_err_msg "$name\n\t${c_norm_prob}Missing argument. Nothing to recommend a backup for.${c_e}"
+    return 1
+  fi
+
+  target_loc="$backups_dir/$(basename "$1")"
+
+  # It's a directory
+  if [[ $1 =~ ^\/ ]]; then
+    orig_loc="$project_root$1"
+    [[ ! -d $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_e}" && return 0
+
+    # Skip backing up the directory if there are no differences between the current and the latest
+    [[ -d $orig_loc && -d "${target_dir}${1}" ]] \
+    && [[ -z $(diff -qr "$orig_loc" "${target_dir}${1}") ]] && return 0
+
+    # For security proceed only if the target is within the project root
+    if ___is_subpath "$project_root" "$target_loc"; then
+      b_msg2="${c_norm}It is recommended that you backup the directory:\n\t"
+      b_msg2b="${c_e}${c_uri}$orig_loc${c_e}\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
+      b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
+      msg="$b_msg1 ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
+
+      echo -e "$msg"
+
+      while true; do
+        read -rp "$( echo -e "$question")" input
+        case $input in
+          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then echo -e "${c_pass}SUCCESS${c_e}"; break; else return 1; fi;;
+          [Nn]* ) return 0;;
+          * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
+        esac
+      done
+
+      # Append merge instructions file for each backup made
+      instr_file="$backups_dir/locations_map.txt"
+      msg="Merge your backed up project specific data:\n\t$target_loc\ninto\n\t$orig_loc"
+      if echo -e "${decor}\n$msg\n${decor}\n" >> "$instr_file"; then
+        echo -e "${c_norm}Merge instructions for this file can be found at ${c_uri}$instr_file${c_e}"
+      else
+        echo -e "${c_norm_prob}Error could not create locations map file: ${c_uri}$instr_file${c_e}"
+        echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_uri}$target_loc${c_e}"
+      fi
+      return 0
+    fi
+    echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
+    return 1
+  fi
+
+  # It's a file...
+  orig_loc="$project_root/$1"
+
+  # Exit gracefully if file is specificed in the manifest but not present in the original or the latest
+  # Also if the --strict option is used then output a warning about what was missing
+  # Only do this if the script sourcing this script has a warn_msg and has_long_option functions
+  # See lib/long-options.sh for more details about long option processing
+  local has_long_option_exists
+  local warn_msg_exists 
+  has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
+  warn_msg_exists="$(declare -f "warn_msg" > /dev/null)"
+  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+    if has_long_option --strict; then
+      [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" \
+        && return 0
+      [[ ! -f "$target_dir/$1" ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}${target_dir}/${1}${c_uri}" \
+        && return 0
+    else
+      [[ ! -f $orig_loc ]] && return 0
+      [[ ! -f "$target_dir/$1" ]] && return 0
+    fi
+  else
+      [[ ! -f $orig_loc ]] && return 0
+      [[ ! -f "$target_dir/$1" ]] && return 0
+  fi
+  
+  # EDGE CASE: If the only change in .gitpod.Dockerfile is the cache buster value then
+  # make that change in current (orig) version of the file instead of recommending the backup
+  # Note: this will leave a changed file in the project root if the update fails further down the line.
+  if [[ $(diff  --strip-trailing-cr "$target_dir/$1" "$orig_loc" | grep -cE "^(>|<)") == 2 ]]; then
+    cb="$(diff "$target_dir/$1" "$orig_loc" | grep -m 1 "ENV INVALIDATE_CACHE" | cut -d"=" -f2- )"
+    if [[ $cb =~ ^[0-9]+$ ]]; then
+      if sed -i "s/ENV INVALIDATE_CACHE=.*/ENV INVALIDATE_CACHE=$cb/" "$orig_loc"; then
+        gp_df_only_cache_buster_changed=yes
+      fi
+      return 0
+    fi
+  fi
+
+  # Skip backing up the file if there are no differences between the current and the latest
+  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
+
+  # For security proceed only if the target is within the project root
+  if ___is_subpath "$project_root" "$target_loc"; then
+    b_msg2="${c_norm}It is recommended that you backup the file:\n\t"
+    b_msg2b="${c_e}${c_uri}$orig_loc\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
+    b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
+    msg="$b_msg1 ${c_e}${c_uri}$orig_loc\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
+
+    echo -e "$msg"
+
+    while true; do
+      read -rp "$( echo -e "$question")" input
+      case $input in
+        [Yy]* ) if cp "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
+        [Nn]* ) return 0;;
+        * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
+      esac
+    done
+
+    # Append merge instructions for each backup to file
+    instr_file="$backups_dir/locations_map.txt"
+    msg="Merge your backed up project specific data:\n\t$target_loc\ninto\n\t$orig_loc"
+    if echo -e "${decor}\n$msg\n${decor}\n" >> "$instr_file"; then
+      echo -e "${c_norm}Merge instructions for this file can be found at ${c_uri}$instr_file${c_e}"
+    else
+      echo -e "${c_norm_prob}Error could not create locations map file ${c_uri}$instr_file${c_e}"
+      echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_uri}$target_loc${c_e}"
+    fi
+    return 0
+  fi
+  echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
+  return 1
 }
