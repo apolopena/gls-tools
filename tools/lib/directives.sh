@@ -51,6 +51,11 @@
 
 __data_keeps=()
 __data_bakcups=()
+note_prefix="${c_file_name}Notice:${c_e}"
+
+# Keep shellchack happy by predefining the colors we use here. See lib/colors.sh
+c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
+c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 ### _directives_err_msg ###
 # Description:
@@ -82,32 +87,48 @@ starter.ini
 
 ### set_directives ###
 # Description:
-# Parses a valid .updater_manifest into global arrays of directives
-# if $1 is not passed in then  the global $tmp_dir will be used if it contains a valid directory
+# Downloads and parses a valid manifest ($1) into global directive arrays 
+# If $1 is not passed in then the global $tmp_dir will be used if it is a valid directory
 # $1 or $tmp_dir should be the temporary working direcotry for an update, install or uninstall
-# $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
+# If $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
 #
-# Sets the following global arrays:
-# $data_keeps $data_merges $data_backups $data_deletes
+# Note:
+# A hardcoded default manifest will be used if the manifest cannot be downloaded
+# The following global array will be set if the manifest is successfully parsed:
+# $__data_keeps$ $__data_backups
 set_directives() {
-  local err_pre="set_directives() internal error:"
-  local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifest"
-  local chunk manifest manifest_file  ec
+  local err_pre="${c_norm_prob}set_directives() internal error:${c_e}"
+  local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifestrr"
+  local chunk manifest manifest_file ec msg1 msg1
 
-  [[ -n $1 ]] && [[ ! -d $1 ]] && echo -e "$err_pre bad temp directory argument" && return 1
+  if [[ -n $1 && ! -d $1 ]]; then
+    _directives_err_msg "$err_pre ${c_norm_prob}bad temp directory argument${c_e}"
+    return 1
+  fi
+
   if [[ -n $1 && -d $1 ]]; then
     manifest_file="$1/$(basename $manifest_url)"
   else
-    [[  -z $1 && -z $tmp_dir ]] && echo "$err_pre $tmp_dir must be set prior to calling this function" && return 1
-    [[ ! -d $tmp_dir ]] && echo "$err_pre not a directory @ $tmp_dir" && return 1
+    if [[  -z $1 && -z $tmp_dir ]]; then
+      msg1="$err_pre ${c_url}$tmp_dir ${c_e}"
+      msg2="${c_norm_prob}must be set prior to calling this function${c_e}"
+      _directives_err_msg "$msg1 $msg2"
+      return 1
+    fi
+    if [[ ! -d $tmp_dir ]]; then
+      _directives_err_msg "$err_pre ${c_norm_prob}not a directory @ ${c_uri}$tmp_dir${c_e}"
+      return 1
+    fi
     manifest_file="$tmp_dir/$(basename $manifest_url)"
   fi
 
   # Download the manifest as a file to the temp working directory
   if ! curl -sf "$manifest_url" -o "$manifest_file"; then
-    echo -e "${c_norm_prob} Could not download the updater manifest at ${c_uri}$manifest_file${c_e}"
+    echo -e "${c_norm_prob} Could not download the updater manifest from ${c_uri}$manifest_url${c_e}"
+    # clear manifest_file to keep parse_manifest_chunk() satisfies
+    manifest_file=
     manifest=$(default_manifest)
-    echo -e "${c_norm_prob}Using the default manifest:\n${c_file}$manifest${c_e}"
+    echo -e "${c_norm_prob}Using the default manifest:\n${c_file}$manifest${c_e}\n"
   else
     manifest="$(cat "$manifest_file")"
   fi
@@ -128,8 +149,9 @@ set_directives() {
   else
     echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}recommend-backup${c_e}"
   fi
-
-  echo "directives.sh successfull parsed the manifest into directive chunks"
+  
+  # temp for debugging
+  echo -e "directives.sh successfull parsed the manifest into directive chunks"
   echo -e "keeps array is:\n${__data_keeps[*]}"
   echo -e "data_backups array is:\n${__data_backups[*]}"
 
@@ -138,15 +160,14 @@ set_directives() {
 
 ### has_directive ###
 # Description:
-# returns  0 if the updater manifest has the start marker ($1)
-# returns 1 if the updater manifest does not contain the start marker ($1)
-# Checks the default manifest if the updater manifest file is not found
+# returns 0 on the first occurrence of a start marker ($1) in a manifest file ($2)
+# returns 1 if there are no occurrences of a start marker ($1) in a manifest file ($2)
+# If the manifest argument ($2) is empty then the default manifest will be used
 has_directive() {
   local manifest err_pre="has_directive() error:"
 
   if [[ -z $2 ]]; then
     manifest="$(default_manifest)"
-    echo -e "set_directive() is using the default manifest"
   else
     [[ ! -f $2 ]] && echo -e "$err_pre manifest file argument is not a file @ $2" && return 1
     manifest="$(cat "$2")"
