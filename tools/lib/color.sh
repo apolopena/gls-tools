@@ -79,8 +79,10 @@ fi
 
 ###  ###
 # Description:
-# Sets the global colors
+# Sets the global colors and styles
 set_colors() {
+  c_e='\e[0m' 
+  c_s_bold='\033[1m'
   c_norm="$c_10"
   c_norm_b="${c_s_bold}${c_norm}"
   c_norm_prob="$c_14"
