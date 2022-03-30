@@ -182,7 +182,7 @@ set_base_version() {
 # Requires Global:
 # $release_json (a valid github latest release json file)
 set_target_version() {
-  local regexp e1 e1b e2
+  local regexp e1 e1b e2 rle
   regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
   e1="${c_norm_prob}Cannot set target version"
   e1b="Missing required file ${c_uri}$release_json${c_e}"
@@ -192,7 +192,13 @@ set_target_version() {
   
   target_version="$(grep "tag_name" "$release_json" | grep -oE "$regexp")"
 
-  [[ -z $target_version ]] && err_msg "$e2" && return 1
+  if [[ -z $target_version ]]; then
+    rle="rate limit exceeded"
+    if [[ $(grep "message" "$release_json" | grep -o "$rle") == "$rle" ]]; then
+      err_msg "$e2\n\t${c_warn}Github hourly $rle${c_e}" && return 1
+    fi
+    err_msg "$e2" && return 1
+  fi
 
   target_dir="$tmp_dir/$target_version"
 }
@@ -534,11 +540,12 @@ cleanup() {
   else
     warn_msg "${e_msg1}${e_msg1b}" && exit 1
   fi
-
+  
+  # Delete all empty backup directories
   find . -maxdepth 1 -type d -name "GLS_BACKUPS_v*" | \
-  while read -r dir_to_delete; do
-    : "$dir_to_delete"
-    #[[ -d $dir_to_delete ]] && rm -rf "$dir_to_delete"
+  while read -r dir; do
+  : "$dir"
+    #[[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -ne 0 ]] && rm -rf "$dir"
   done 
 }
 
