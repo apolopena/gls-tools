@@ -544,8 +544,7 @@ cleanup() {
   # Delete all empty backup directories
   find . -maxdepth 1 -type d -name "GLS_BACKUPS_v*" | \
   while read -r dir; do
-  : "$dir"
-    #[[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -ne 0 ]] && rm -rf "$dir"
+    [[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -eq 0 ]] && rm -rf "$dir"
   done 
 }
 
