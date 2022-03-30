@@ -409,6 +409,7 @@ ___keep() {
 ___recommend_backup() {
   local name orig_loc target_loc err_pre e1_pre msg b_msg1 b_msg2 b_msg2b b_msg3 msg warn1 warn1b cb yn
   local has_long_option_exists warn_msg_exists note_prefix question instr_file input decor
+  local prompt_again1 prompt_again1b
 
   has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
   warn_msg_exists="$(declare -f "warn_msg" > /dev/null)"
@@ -423,6 +424,8 @@ ___recommend_backup() {
   question="${c_prompt}Would you like perform the backup now ${yn}${c_prompt}? ${c_e}"
   warn1="$note_prefix ${c_norm}Answering no to the question below${c_e}"
   warn1b="${c_norm}will most likely result in the loss of project specific data.${c_e}"
+  prompt_again1="${c_norm}Please answer ${c_choice}y${c_e}"
+  prompt_again1b="${c_norm}for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}"
 
   if [[ -z $project_root ]]; then
     _directives_err_msg "$name${c_norm_prob}: required global variable \$project_root${c_e}"
@@ -494,9 +497,16 @@ ___recommend_backup() {
       while true; do
         read -rp "$( echo -e "$question")" input
         case $input in
-          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up the directory ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
+          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then 
+                    success_msg "${c_file}Backed up the directory ${c_uri}$orig_loc${c_e}"
+                    break 
+                  else
+                    return 1 
+                  fi;;
+
           [Nn]* ) return 0;;
-          * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
+
+          * ) echo -e "$prompt_again1 $prompt_again1b";;
         esac
       done
 
@@ -569,9 +579,16 @@ ___recommend_backup() {
     while true; do
       read -rp "$( echo -e "$question")" input
       case $input in
-        [Yy]* ) if cp "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up the file ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
+        [Yy]* ) if cp "$orig_loc" "$target_loc"; then
+                  success_msg "${c_file}Backed up the file ${c_uri}$orig_loc${c_e}"
+                  break
+                else
+                  return 1
+                fi;;
+
         [Nn]* ) return 0;;
-        * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
+        
+        * ) echo -e "$prompt_again1 $prompt_again1b";;
       esac
     done
 
