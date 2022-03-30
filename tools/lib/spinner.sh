@@ -111,7 +111,7 @@ function decode_spinner_msg() {
 
 ### spinner_task ###
 # Description:
-# Dynamically invokes function or command with the arguments passed to it via a sub-shell
+# Dynamically invokes a function or command with the arguments passed to it via a sub-shell
 # Uses a spinner to inform the user with a message, a progress ticker and the result (DONE or FAILED)
 # ($1) The message the spinner will display as it is ticking
 # ($2) The function or command that will be invoked
@@ -120,7 +120,7 @@ function decode_spinner_msg() {
 # are passed on to the subshell
 #
 # Note:
-# Returns 0 on success and returns 1 on failure
+# Only supports commands that spawn a single process. Does not support piped commands.
 # Any occurrence of @@@ in a spinner message will be replaced with a single space character
 function spinner_task() {
   local e_pre msg ec cmd show_error
