@@ -47,7 +47,7 @@ is_long_option() {
 }
 
 init() {
-  local supported_options=('--use-version-stub' '--treat-as-unbuilt')
+  local supported_options=(--use-version-stub --treat-as-unbuilt --strict --load-deps-locally)
   local version urls url ver_regex arg
   ver_regex='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
 
@@ -187,7 +187,7 @@ new() {
         [[ $1 == 'sandbox' ]] && if new_sandbox "$2"; then return 0; else return 1; fi
         if new_sandbox "$2" "control_sandbox_v$2"; then return 0; fi
       fi
-      echo "Command '$1' aborted by user"
+      echo "Command '$1' aborted by user" && exit 1
     ;;
 
     'double-sandbox')
@@ -251,6 +251,15 @@ gls() {
       if ! new "${script_args[2]}" "${script_args[3]}" "${script_args[4]}"; then 
         echo "Error: new subcommand failed";
       fi
+    ;;
+
+    'test-update')
+      local ver_regex='^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$'
+      [[ $(basename "$(pwd)") == 'sandbox' ]] && echo "You cannot be in the sandbox. try cd .. first" && exit 1
+      [[ -z $2 ]] && echo "test-update-locally requires a version argument" && exit 1
+      [[ ! $2 =~ $ver_regex ]] && echo -e "bad version arg: $2\nverion argument must be first" && exit 1
+      local ver="$2"; shift; shift
+      bash tools/internal/blackbox.sh gls new sandbox "$ver" && cd sandbox && bash ../tools/update.sh "$@"
     ;;
 
     *)
