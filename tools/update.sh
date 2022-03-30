@@ -112,7 +112,13 @@ success_msg() {
 }
 
 failed_copy_to_root_msg() {
-  echo -e "${c_norm_prob}Failed to copy target ${c_uri}$1${c_e}${c_norm_prob} to the project root"
+  local msg msg_p="${c_norm_prob}Failed to copy target"
+  case $2 in
+    f ) msg="$msg_p file ${c_uri}$1${c_e}${c_norm_prob} to the project root";;
+    d ) msg="$msg_p directory ${c_uri}$1${c_e}${c_norm_prob} to the project root";;
+    * ) msg="$msg_p ${c_uri}$1${c_e}${c_norm_prob} to the project root"
+  esac
+  echo -e "$msg"
 }
 
 ### set_base_version_unknown ###
@@ -212,7 +218,7 @@ download_release_json() {
   local url msg
   url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   msg="${c_norm}Downloading release data"
-  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curl' --silent "$url" -o "$release_json"
+  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curl' --silent "$url" -o "$release_json" && echo
 }
 
 ### download_latest ###
@@ -222,11 +228,9 @@ download_release_json() {
 # $release_json
 # $target_dir
 download_latest() {
-
-  #echo -e "${c_norm}TESTING MOCK: Downloading and extracting ${c_e}${c_url}https://api.github.com/repos/apolopena/gitpod-laravel-starter/tarball/v1.5.0${c_e}" # temp testing
-  #return 0 # temp testing, must download once first though
   local files_to_move=("CHANGELOG.md" "LICENSE" "README.md")
-  local e1 e2 url loc msg
+  local e1 e2 url loc msg ec
+
   e1="${c_norm_prob}Cannot download/extract latest gls tarball${c_e}"
   e2="${c_norm_prob}Unable to parse url from ${c_uri}$release_json${c_e}"
 
@@ -237,17 +241,24 @@ download_latest() {
   url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
   [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
 
+  
   if ! cd "$target_dir";then
     err_msg "$e1\n\t${c_norm_prob}internal error, bad target directory: ${c_uri}$target_dir${c_e}"
     return 1
   fi
 
-  echo -e "${c_norm}Downloading and extracting ${c_url}$url${c_e}"
-  if ! curl -sL "$url" | tar xz --strip=1; then
-    err_msg "$e1\n\t ${c_norm}curl failed ${c_url}$url${c_e}"
+  msg="${c_norm}Downloading and extracting latest release tarball from:\n\t${c_url}$url${c_e}"
+  start_spinner "$msg" && curl -sL "$url" | tar xz --strip=1
+  ec=$?
+  if [[ $ec -eq 0 ]]; then
+    stop_spinner 0
+    echo
+  else
+    stop_spinner 1
+    err_msg "${c_norm_prob}Downloading and extracting the latest release tarball${c_e}"
     return 1
   fi
-  
+
   for i in "${!files_to_move[@]}"; do
    loc="$target_dir/${files_to_move[$i]}"
    loc2="$target_dir/.gp/${files_to_move[$i]}"
@@ -268,7 +279,7 @@ download_latest() {
 # Creates any necessary files or directories any routine might need
 # Handles errors for each routine called or action made
 update() {
-  local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c
+  local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c fin_msg1 fin_msg1b
   local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
 
   e_fail_prefix="${c_norm_prob}update() internal error: Failed to"
@@ -295,6 +306,8 @@ update() {
   if ! set_base_version; then set_base_version_unknown; fi
   base_ver_txt="${c_number}$base_version${c_e}"
   target_ver_txt="${c_number}$target_version${c_e}"
+  fin_msg1="${c_norm_b}gitpod-laravel-starter has been updated to the latest version"
+  fin_msg1b="${c_number}v$target_ver_txt${c_e}"
   same_ver1="$note_prefix ${c_norm_prob}Your current version $base_ver_txt"
   same_ver1b="${c_norm_prob}and the latest version $target_ver_txt ${c_norm_prob}are the same${c_e}"
   same_ver1c="${c_norm}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm} is already up to date${c_e}"
@@ -317,7 +330,7 @@ update() {
   # Set directives, download and extract latest release and execute directives
   update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
   update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
-  echo -e "${c_s_bold}${c_pass}START: ${c_e}$update_msg1 $update_msg2"
+  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm}...\n${c_e}"
   if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
   if ! download_latest; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
@@ -330,19 +343,23 @@ update() {
   # Latest directories to copy from target (latest) to orig (current)
   local root_dirs=(".gp" ".vscode" ".github")
 
+  # Femove files before copying just in case they are in the current (orig) but not the latest (target)
   for i in "${!root_files[@]}"; do
     if [[ -f ${root_files[$i]} ]]; then
       if ! rm "${root_files[$i]}"; then
-        warn_msg "${c_norm_prob}Could not delete the file ${c_uri}.gp${c_e}\n\t$warn_msg1c"
+        warn_msg "${c_norm_prob}Could not delete the file ${c_uri}${root_files[$i]}${c_e}\n\t$warn_msg1c"
       fi
     fi
   done
 
-  [[ $gp_df_only_cache_buster_changed == no && -f .gitpod.Dockerfile ]] && rm .gitpod.Dockerfile
+  # Commented out belwo line because I think we dont need this since cp will overwrite the file no matter what
+  # and this file will always be in the project root no matter what version of gitpod-laravel-starter is used
+  #[[ $gp_df_only_cache_buster_changed == no && -f .gitpod.Dockerfile ]] && rm .gitpod.Dockerfile
 
   # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
   [[ -d .theia ]] && rm -rf .theia
 
+  # Remove .gp to ensure that no old files remain since we are using cp instead of rsync
   if ! rm -rf .gp; then
     warn_msg "$warn_msg1\n\t$warn_msg1b"
   fi
@@ -352,28 +369,30 @@ update() {
   for i in "${!root_dirs[@]}"; do
     loc="$target_dir/${root_dirs[$1]}"
     if ! cp -r "$loc" "$project_root"; then
-      err_msg "$(failed_copy_to_root_msg "$loc")/t$e1" && abort_msg && return 1
+      warn_msg "$(failed_copy_to_root_msg "$loc" "d")\n\t$e1/tree/main/${c_url}${root_dirs[$1]}${c_e}"
     fi
   done
 
   for i in "${!root_files[@]}"; do
     loc="$target_dir/${root_files[$i]}"
     if ! cp "$loc" "$project_root/${root_files[$i]}"; then
-      err_msg "${c_norm_prob}Could not copy the file ${c_uri}${loc}{c_e}\n\t$warn_msg1d"
+      warn_msg "${c_norm_prob}Could not copy the file ${c_uri}${loc}${c_e}\n\t$warn_msg1d"
     fi
   done
 
   if [[ $gp_df_only_cache_buster_changed == no ]]; then
     file="$target_dir/.gitpod.Dockerfile"
     if ! cp "$file" "$project_root"; then
-      err_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}")/t$e1"
+      warn_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}" "f")/t$e1/tree/main/${c_url}.gitpod.Dockerfile${c_e}"
     fi
   fi
-
-  echo -e "${c_s_bold}${c_pass}FINISHED:${c_norm_b} $update_msg1 $update_msg2"
-  # END: Update by deleting the old (orig) and coping over the new (target)
-
+  
+  ##echo -e "${c_s_bold}${c_pass}FINISHED:${c_norm_b} $update_msg1 $update_msg2"
+  
+  gls_header success
+  echo -e "$fin_msg1 $fin_msg1b"
   return 0
+  # END: Update by deleting the old (orig) and coping over the new (target)
 }
 
 ### load_get_deps ###
