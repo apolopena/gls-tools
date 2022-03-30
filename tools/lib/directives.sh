@@ -315,28 +315,28 @@ ___keep() {
     orig_loc="$project_root$1"
     target_loc="$target_dir$1"
     
-  # Return 0 if a directory is specified in the manifest but not present in the original or the latest
-  # If the --strict option is used then output a warning about what was missing
-  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
-  # See lib/long-options.sh for more details about long option processing
-  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
-    if has_long_option --strict; then
-      if [[ ! -d $orig_loc ]]; then
-        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
-        return 0
-      fi
-      if [[ ! -d "$target_dir/$1" ]]; then 
-        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
-        return 0
+    # Return 0 if a directory is specified in the manifest but not present in the original or the latest
+    # If the --strict option is used then output a warning about what was missing
+    # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
+    # See lib/long-options.sh for more details about long option processing
+    if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+      if has_long_option --strict; then
+        if [[ ! -d $orig_loc ]]; then
+          warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
+          return 0
+        fi
+        if [[ ! -d "$target_dir/$1" ]]; then 
+          warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
+          return 0
+        fi
+      else
+        [[ ! -d $orig_loc ]] && return 0
+        [[ ! -d "$target_dir/$1" ]] && return 0
       fi
     else
       [[ ! -d $orig_loc ]] && return 0
       [[ ! -d "$target_dir/$1" ]] && return 0
     fi
-   else
-     [[ ! -d $orig_loc ]] && return 0
-     [[ ! -d "$target_dir/$1" ]] && return 0
-   fi
     
     # Skip keeping the directory if the original and target exists and there are no differences
     [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
@@ -420,10 +420,10 @@ ___recommend_backup() {
   name="${c_file_name}recommend_backup()${c_e}"
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
   e1_pre="${c_norm_prob}Could not find${c_e}"
-  b_msg1="\n${c_file}There is probably project specific data in"
+  b_msg1="${c_file}There is probably project specific data in"
   question="${c_prompt}Would you like perform the backup now ${yn}${c_prompt}? ${c_e}"
-  warn1="$note_prefix ${c_norm}Answering no to the question below${c_e}"
-  warn1b="${c_norm}will most likely result in the loss of project specific data.${c_e}"
+  warn1="$note_prefix ${c_norm}Answering no${c_e}"
+  warn1b="${c_norm}will skip the backup which will most likely overwrite project specific data.${c_e}"
   prompt_again1="${c_norm}Please answer ${c_choice}y${c_e}"
   prompt_again1b="${c_norm}for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}"
 
@@ -458,28 +458,28 @@ ___recommend_backup() {
   if [[ $1 =~ ^\/ ]]; then
     orig_loc="$project_root$1"
 
-  # Return 0 if a directory is specified in the manifest but not present in the original or the latest
-  # If the --strict option is used then output a warning about what was missing
-  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
-  # See lib/long-options.sh for more details about long option processing
-  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
-    if has_long_option --strict; then
-      if [[ ! -d $orig_loc ]]; then
-        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
-        return 0
-      fi
-      if [[ ! -d "$target_dir/$1" ]]; then 
-        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
-        return 0
+    # Return 0 if a directory is specified in the manifest but not present in the original or the latest
+    # If the --strict option is used then output a warning about what was missing
+    # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
+    # See lib/long-options.sh for more details about long option processing
+    if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+      if has_long_option --strict; then
+        if [[ ! -d $orig_loc ]]; then
+          warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
+          return 0
+        fi
+        if [[ ! -d "$target_dir/$1" ]]; then 
+          warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
+          return 0
+        fi
+      else
+        [[ ! -d $orig_loc ]] && return 0
+        [[ ! -d "$target_dir/$1" ]] && return 0
       fi
     else
       [[ ! -d $orig_loc ]] && return 0
       [[ ! -d "$target_dir/$1" ]] && return 0
     fi
-   else
-     [[ ! -d $orig_loc ]] && return 0
-     [[ ! -d "$target_dir/$1" ]] && return 0
-   fi
 
     # Skip backing up the directory if there are no differences between the current and the latest
     [[ -d $orig_loc && -d "${target_dir}${1}" ]] \
@@ -491,7 +491,8 @@ ___recommend_backup() {
       b_msg2b="${c_e}${c_uri}$orig_loc${c_e}\n${c_norm}to\n\t${c_e}${c_uri}$target_loc${c_e}"
       b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
       msg="$b_msg1 ${c_e}${c_uri}$orig_loc${c_e}\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
-
+      
+      echo -e "${c_file}${decor}${decor}${c_e}"
       echo -e "$msg"
 
       while true; do
@@ -504,7 +505,9 @@ ___recommend_backup() {
                     return 1 
                   fi;;
 
-          [Nn]* ) return 0;;
+          [Nn]* ) echo -e "${note_prefix} ${c_norm_prob}Backup was skipped${c_e}"
+                  echo -e "${c_file}${decor}${decor}${c_e}"
+                  return 0;;
 
           * ) echo -e "$prompt_again1 $prompt_again1b";;
         esac
@@ -519,6 +522,7 @@ ___recommend_backup() {
         echo -e "${c_norm_prob}Error could not create locations map file: ${c_uri}$instr_file${c_e}"
         echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_uri}$target_loc${c_e}"
       fi
+      echo -e "${c_file}${decor}${decor}${c_e}"
       return 0
     fi
     echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
@@ -574,6 +578,7 @@ ___recommend_backup() {
     b_msg3="${c_norm}and merge the contents manually back into the project after the update has succeeded.${c_e}"
     msg="$b_msg1 ${c_e}${c_uri}$orig_loc\n$b_msg2$b_msg2b\n$b_msg3\n$warn1 $warn1b"
 
+    echo -e "${c_file}${decor}${decor}${c_e}"
     echo -e "$msg"
 
     while true; do
@@ -586,7 +591,9 @@ ___recommend_backup() {
                   return 1
                 fi;;
 
-        [Nn]* ) return 0;;
+        [Nn]* ) echo -e "${note_prefix} ${c_norm_prob}Backup was skipped${c_e}"
+                echo -e "${c_file}${decor}${decor}${c_e}"
+                return 0;;
         
         * ) echo -e "$prompt_again1 $prompt_again1b";;
       esac
@@ -601,6 +608,7 @@ ___recommend_backup() {
       echo -e "${c_norm_prob}Error could not create locations map file ${c_uri}$instr_file${c_e}"
       echo -e "${c_norm_prob}Refer back to this log to manually back up and merge ${c_uri}$target_loc${c_e}"
     fi
+    echo -e "${c_file}${decor}${decor}${c_e}"
     return 0
   fi
   echo -e "$name ${c_norm_prob}failed. Illegal target ${c_uri}$target_loc${c_e}"
