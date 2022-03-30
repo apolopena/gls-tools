@@ -1,4 +1,6 @@
 #!/bin/bash
+# Allow backslash+linefeed in a literal (for eval), will go away when we start using shellcheck > 0.7.2 
+# shellcheck disable=SC1004
 #
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
@@ -27,39 +29,21 @@
 # All unsupported directives in the manifest will be ignored
 #
 # Note:
-# NOTE SURE WHAT TO DO ABOUT UTILITY FUNCTIONS, 
-# SHARING THEM MAKES A MESSY PATTERN AND SO DOES DUPLICATING THEM
+# Output will be colorized if a script that sources this script implments lib/colors.sh
+# Additional output for the --strict flag will occur if a script that sources this script
+# implements lib/long-options.sh and has a warn_msg function
 
-
-
-# NEW GLOBALS NEEDED
-# ___manifest
-#
-
-
-# GLOBALS USED
-# data_keeps=(), data_bakups=()
-
-# FUNCTIONS TO BRING IN
-# set_directives() # requires: $data_keeps, $data_backups
-# parse_manifest_chunk()
-# has_directive() # requires: The manifest file and default_manifest()
-# execute_directives() # requires: $data_keeps, $data_backups, err_msg()
-# keep() # requires: $project_root, $target_dir, $note_prefix, err_msg(), is_subpath(), yes_no()
-# recommend_backup() # requires: $project_root, $backups_dir, err_msg(), is_subpath(), yes_no()
-
+# BEGIN: Globals
 __data_keeps=()
 __data_backups=()
-
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile
-gp_df_only_cache_buster_changed=no
-# Satisfy shellcheck since this is a varaible that this script doesn't actually use
+gp_df_only_cache_buster_changed=no 
+# Satisfy shellcheck since this is a variable that this script sets but does not use
 : "$gp_df_only_cache_buster_changed"
-
-# Keep shellchack happy by predefining the colors we use here. See lib/colors.sh
-c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
+# Satisfy shellcheck happy by predefining the colors we use here. See lib/colors.sh
+c_e=; c_norm=; c_norm_prob=; c_pass=; c_fail=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
-
+# END: Globals
 
 
 ### _directives_err_msg ###
@@ -86,7 +70,6 @@ starter.ini
 .npmrc
 .gitpod.yml
 .gitpod.Dockerfile
-/foobar.test
 /.github
 /.vscode"
 }
@@ -115,7 +98,7 @@ ___is_subpath() {
 # $__data_keeps$ $__data_backups
 set_directives() {
   local err_pre="${c_norm_prob}set_directives() internal error:${c_e}"
-  local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifestrr"
+  local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifest"
   local note_prefix="${c_file_name}Notice:${c_e}"
   local chunk manifest manifest_file ec msg1 msg1
 
@@ -143,7 +126,7 @@ set_directives() {
   # Download the manifest as a file to the temp working directory
   if ! curl -sf "$manifest_url" -o "$manifest_file"; then
     echo -e "${c_norm_prob} Could not download the updater manifest from ${c_uri}$manifest_url${c_e}"
-    # clear manifest_file to keep parse_manifest_chunk() satisfies
+    # clear manifest_file to keep _parse_manifest_chunk() satisfied
     manifest_file=
     manifest=$(default_manifest)
     echo -e "${c_norm_prob}Using the default manifest:\n${c_file}$manifest${c_e}\n"
@@ -153,7 +136,7 @@ set_directives() {
 
   # Parse chunks and convert them to global directive arrays
   if has_directive 'keep' "$manifest_file"; then
-    chunk="$(parse_manifest_chunk 'keep' "$manifest")"
+    chunk="$(_parse_manifest_chunk 'keep' "$manifest")"
     ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
     IFS=$'\n' read -r -d '' -a __data_keeps <<< "$chunk"
   else
@@ -161,7 +144,7 @@ set_directives() {
   fi
 
   if has_directive 'recommend-backup' "$manifest_file"; then
-    chunk="$(parse_manifest_chunk 'recommend-backup' "$manifest")"
+    chunk="$(_parse_manifest_chunk 'recommend-backup' "$manifest")"
     ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
     IFS=$'\n' read -r -d '' -a __data_backups <<< "$chunk"
   else
@@ -193,12 +176,12 @@ has_directive() {
   return 1
 }
 
-### parse_manifest_chunk ###
+### _parse_manifest_chunk ###
 # Description:
-# Parses a chunk (directive section) of the manifest
-parse_manifest_chunk() {
+# Internal function that parses a directive section (chunk) of the manifest
+_parse_manifest_chunk() {
   local err_p err_1 err_1b err_missing_marker chunk ec 
-  err_p="${c_file_name}parse_manifest_chunk(): ${c_norm_prob}parse error${c_e}"
+  err_p="${c_file_name}_parse_manifest_chunk(): ${c_norm_prob}parse error${c_e}"
   err_missing_marker="${c_e}${c_file_name}[${c_e}${c_number}$1${c_e}${c_file_name}]${c_e}"
 
   # Error handling
@@ -223,7 +206,7 @@ parse_manifest_chunk() {
 #
 # Note: 
 # Each function called will make system calls that affect the filesystem
-# This function should be error handled
+# This function should be error handled by the caller
 #
 # Requires Global Arrays:
 # $__data_keeps: calls the function: keep, for each item in the array
@@ -237,7 +220,7 @@ execute_directives() {
   for (( i=0; i<${#__data_keeps[@]}; i++ ))
   do
     [[ $1 == '--debug' ]] && echo -e "\tprocessing ${__data_keeps[$i]}"
-    if ! keep "${__data_keeps[$i]}"; then
+    if ! ___keep "${__data_keeps[$i]}"; then
       _directives_err_msg "$e_pre keep ${c_uri}${__data_keeps[$i]}${c_e}"
       return 1
     fi
@@ -250,16 +233,17 @@ execute_directives() {
   for (( i=0; i<${#__data_backups[@]}; i++ ))
   do
     [[ $1 == '--debug' ]] && echo -e "\tprocessing: ${__data_backups[$i]}"
-    if ! recommend_backup "${__data_backups[$i]}"; then
-      _directives_err_msg "$e_pre reccomend-backup for ${c_uri}${__data_backups[$i]}${c_e}"
+    if ! ___recommend_backup "${__data_backups[$i]}"; then
+      _directives_err_msg "$e_pre recommend-backup for ${c_uri}${__data_backups[$i]}${c_e}"
       return 1
     fi
   done
 }
 
-### keep ###
+### ___keep ###
 # Description:
-# Persists a file ($1) or directory ($1) from the original (base) version to the updated (target) version
+# Internal function
+# Persists a file ($1) or directory ($1) from the base (orig) version to the latest (target) version
 # by copying a file or directory (recursively) from an original location ($project_root/$1)
 # to a target location ($target_dir/$1).
 # The target location will be deleted (recursively via rm -rf) prior to the copy.
@@ -267,19 +251,30 @@ execute_directives() {
 # If ($1) does not start with a / then it is considered a file
 #
 # Note:
-# The global
-# This function should be error handled by the caller
-# This function will return an error if the target location is not a subpath of $project_root
-# If the global varaible $base_version is not set then it will be set locally to the string: unknown
+# The keep operation will not occur if there are files or directories have no differences between them
+# The keep operation will not occur if the file or directory for the original or the target does not exist
+# If the calling script has implmented /lib/long-options.sh and has a warn_msg function and the 
+# global option --strict has been passed in by the user then a warning will be printed about the missing
+# file or directory
 #
-# Requires Globals:
-# Will return exit code 1 if any of below global variables are not present or are not valid directories
-# $project_root $target_dir 
-# $project_root $target_dir $note_prefix
-keep() {
-  local name orig_loc target_loc err_pre e1_pre note1 note1b note1c orig_ver_text
-  local note_prefix="${c_file_name}Notice:${c_e}"
+# Additional Note:
+# This function should be error handled by the caller even though this function is robust
+# This function will return an error if the target location is not a subpath of $project_root
+# If the global variable $base_version is not set then it will be set locally to the string: unknown
+# Exit code 1 is returned if any required global variables are not present or not valid files
+# or directories
+#
+# Required Globals Variables:
+# $project_root 
+# $target_dir
+___keep() {
+  local name orig_loc target_loc err_pre e1_pre note1 note1b note1c orig_ver_text note_prefix
+  local has_long_option_exists warn_msg_exists
 
+  has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
+  warn_msg_exists="$(declare -f "warn_msg" > /dev/null)"
+
+  note_prefix="${c_file_name}Notice:${c_e}"
   name="${c_file_name}keep()${c_e}"
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
   e1_pre="${c_norm_prob}Could not find${c_e}"
@@ -318,10 +313,30 @@ keep() {
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
     orig_loc="$project_root$1"
-    [[ ! -d $orig_loc ]] \
-      && _directives_err_msg "$err_pre\n\t$e1_pre ${c_norm_prob}directory ${c_uri}$orig_loc${c_e}" \
-      && return 1
     target_loc="$target_dir$1"
+    
+  # Return 0 if a directory is specified in the manifest but not present in the original or the latest
+  # If the --strict option is used then output a warning about what was missing
+  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
+  # See lib/long-options.sh for more details about long option processing
+  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+    if has_long_option --strict; then
+      if [[ ! -d $orig_loc ]]; then
+        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
+        return 0
+      fi
+      if [[ ! -d "$target_dir/$1" ]]; then 
+        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
+        return 0
+      fi
+    else
+      [[ ! -d $orig_loc ]] && return 0
+      [[ ! -d "$target_dir/$1" ]] && return 0
+    fi
+   else
+     [[ ! -d $orig_loc ]] && return 0
+     [[ ! -d "$target_dir/$1" ]] && return 0
+   fi
     
     # Skip keeping the directory if the original and target exists and there are no differences
     [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
@@ -341,10 +356,30 @@ keep() {
 
   # It's a file
   orig_loc="$project_root/$1"
-  [[ ! -f $orig_loc ]] \
-    && _directives_err_msg "$err_pre\n\t$e1_pre${c_norm_prob} file ${c_uri}$orig_loc${c_e}" \
-    && return 1
   target_loc="$target_dir/$1"
+
+  # Return 0 if a file is specified in the manifest but not present in the original or the latest
+  # If the --strict option is used then output a warning about what was missing
+  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
+  # See lib/long-options.sh for more details about long option processing
+  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+    if has_long_option --strict; then
+      if [[ ! -f $orig_loc ]]; then
+        warn_msg "$err_pre\n\t$e1_pre file ${c_uri}$orig_loc${c_e}"
+        return 0
+      fi
+      if [[ ! -f "$target_dir/$1" ]]; then 
+        warn_msg "$err_pre\n\t$e1_pre file ${c_uri}${target_dir}/${1}${c_e}"
+        return 0
+      fi
+    else
+      [[ ! -f $orig_loc ]] && return 0
+      [[ ! -f "$target_dir/$1" ]] && return 0
+    fi
+  else
+    [[ ! -f $orig_loc ]] && return 0
+    [[ ! -f "$target_dir/$1" ]] && return 0
+  fi
 
   # Skip keeping the file if the original and target exists and there are no differences
   [[ -d $orig_loc && -d $target_loc ]] && [[ -z $(diff -qr "$orig_loc" "$target_loc") ]] && return 0
@@ -371,11 +406,15 @@ keep() {
 # 
 # Requires Globals:
 # $project_root $backups_dir
-recommend_backup() {
+___recommend_backup() {
   local name orig_loc target_loc err_pre e1_pre msg b_msg1 b_msg2 b_msg2b b_msg3 msg warn1 warn1b cb yn
-  local question instr_file input decor="----------------------------------------------"
-  local note_prefix="${c_file_name}Notice:${c_e}"
+  local has_long_option_exists warn_msg_exists note_prefix question instr_file input decor
 
+  has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
+  warn_msg_exists="$(declare -f "warn_msg" > /dev/null)"
+
+  decor="----------------------------------------------"
+  note_prefix="${c_file_name}Notice:${c_e}"
   yn="${c_e}${c_prompt}(${c_choice}y${c_e}${c_prompt}/${c_e}${c_choice}n${c_prompt})${c_e}"
   name="${c_file_name}recommend_backup()${c_e}"
   err_pre="${c_norm_prob}Failed to ${c_e}$name"
@@ -415,7 +454,29 @@ recommend_backup() {
   # It's a directory
   if [[ $1 =~ ^\/ ]]; then
     orig_loc="$project_root$1"
-    [[ ! -d $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_e}" && return 0
+
+  # Return 0 if a directory is specified in the manifest but not present in the original or the latest
+  # If the --strict option is used then output a warning about what was missing
+  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
+  # See lib/long-options.sh for more details about long option processing
+  if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
+    if has_long_option --strict; then
+      if [[ ! -d $orig_loc ]]; then
+        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}$orig_loc${c_e}"
+        return 0
+      fi
+      if [[ ! -d "$target_dir/$1" ]]; then 
+        warn_msg "$err_pre\n\t$e1_pre directory ${c_uri}${target_dir}/${1}${c_e}"
+        return 0
+      fi
+    else
+      [[ ! -d $orig_loc ]] && return 0
+      [[ ! -d "$target_dir/$1" ]] && return 0
+    fi
+   else
+     [[ ! -d $orig_loc ]] && return 0
+     [[ ! -d "$target_dir/$1" ]] && return 0
+   fi
 
     # Skip backing up the directory if there are no differences between the current and the latest
     [[ -d $orig_loc && -d "${target_dir}${1}" ]] \
@@ -457,28 +518,31 @@ recommend_backup() {
   # It's a file...
   orig_loc="$project_root/$1"
 
-  # Exit gracefully if file is specificed in the manifest but not present in the original or the latest
-  # Also if the --strict option is used then output a warning about what was missing
-  # Only do this if the script sourcing this script has a warn_msg and has_long_option functions
+  # Return 0 if a file is specified in the manifest but not present in the original or the latest
+  # If the --strict option is used then output a warning about what was missing
+  # Only do this a the script sourcing this script has the warn_msg and has_long_option functions
   # See lib/long-options.sh for more details about long option processing
-  local has_long_option_exists
-  local warn_msg_exists 
-  has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
-  warn_msg_exists="$(declare -f "warn_msg" > /dev/null)"
   if [[ $has_long_option_exists -eq 0 && $warn_msg_exists -eq 0 ]]; then
     if has_long_option --strict; then
-      [[ ! -f $orig_loc ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}$orig_loc${c_uri}" \
-        && return 0
-      [[ ! -f "$target_dir/$1" ]] && warn_msg "$err_pre\n\t$e1_pre ${c_uri}${target_dir}/${1}${c_uri}" \
-        && return 0
+      if [[ ! -f $orig_loc ]]; then
+        warn_msg "$err_pre\n\t$e1_pre file ${c_uri}$orig_loc${c_e}"
+        return 0
+      fi
+      if [[ ! -f "$target_dir/$1" ]]; then 
+        warn_msg "$err_pre\n\t$e1_pre file ${c_uri}${target_dir}/${1}${c_e}"
+        return 0
+      fi
     else
       [[ ! -f $orig_loc ]] && return 0
       [[ ! -f "$target_dir/$1" ]] && return 0
     fi
   else
-      [[ ! -f $orig_loc ]] && return 0
-      [[ ! -f "$target_dir/$1" ]] && return 0
+    [[ ! -f $orig_loc ]] && return 0
+    [[ ! -f "$target_dir/$1" ]] && return 0
   fi
+
+  # Skip backing up the file if there are no differences between the current and the latest
+  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
   
   # EDGE CASE: If the only change in .gitpod.Dockerfile is the cache buster value then
   # make that change in current (orig) version of the file instead of recommending the backup
@@ -492,9 +556,6 @@ recommend_backup() {
       return 0
     fi
   fi
-
-  # Skip backing up the file if there are no differences between the current and the latest
-  [[ -z $(diff -q "$orig_loc" "$target_dir/$1") ]] && return 0
 
   # For security proceed only if the target is within the project root
   if ___is_subpath "$project_root" "$target_loc"; then
