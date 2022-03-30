@@ -494,7 +494,7 @@ ___recommend_backup() {
       while true; do
         read -rp "$( echo -e "$question")" input
         case $input in
-          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then echo -e "${c_pass}SUCCESS${c_e}"; break; else return 1; fi;;
+          [Yy]* ) if cp -R "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up the directory ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
           [Nn]* ) return 0;;
           * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
         esac
@@ -569,7 +569,7 @@ ___recommend_backup() {
     while true; do
       read -rp "$( echo -e "$question")" input
       case $input in
-        [Yy]* ) if cp "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
+        [Yy]* ) if cp "$orig_loc" "$target_loc"; then success_msg "${c_file}Backed up the file ${c_uri}$orig_loc${c_e}"; break; else return 1; fi;;
         [Nn]* ) return 0;;
         * ) echo -e "${c_norm}Please answer ${c_choice}y${c_e}${c_norm} for yes or ${c_choice}n${c_e}${c_norm} for no.${c_e}";;
       esac
