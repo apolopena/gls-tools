@@ -14,7 +14,7 @@
 
 
 # Satisfy shellcheck by defining the colors that may be used by this script
-c_norm_prob=; c_uri=; c_e;
+c_norm_prob=; c_uri=; c_e=;
 
 ### url_exists ###
 # Description:
@@ -104,6 +104,11 @@ gls_installation_exists() {
   return 1
 }
 
+### gls_installation_exists ###
+# Description:
+# Echoes a message regarding a failure to copy from a path ($1)
+# for either a file ($2) or directory ($2)
+# Pass d as $2 for a directory message or f as $2 for file message
 failed_copy_to_root_msg() {
   local msg msg_p="${c_norm_prob}Failed to copy target"
   case $2 in
