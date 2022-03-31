@@ -8,13 +8,16 @@
 # Description:
 # Library for downloading apolopena/gitpod-laravel-starter data
 #
-# Required globals
+# Required globals:
 # The functions in this library require valid directories to work from
-# See the comment header for each function for what is required
+# See the Globals section and the comment header for each function for what is required
 
-
+# BEGIN: Globals
+# Satisfy shellcheck by defining the global variables this script requires but does not define
+project_root=; target_dir=;
 # Satisfy shellcheck happy by predefining the colors we use here. See lib/colors.sh
 c_e=; c_norm=; c_norm_prob=; c_fail=; c_file_name=; c_url=; c_uri=; c_file=;
+# 
 
 ### download_release_json ###
 # Description:

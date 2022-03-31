@@ -452,9 +452,9 @@ update() {
   e1="${c_norm_prob}You will need to manually copy it from the repository: ${c_url}$gls_url${c_e}"
 
   for i in "${!root_dirs[@]}"; do
-    loc="$target_dir/${root_dirs[$1]}"
+    loc="$target_dir/${root_dirs[$i]}"
     if ! cp -r "$loc" "$project_root"; then
-      warn_msg "$(failed_copy_to_root_msg "$loc" "d")\n\t$e1/tree/main/${c_url}${root_dirs[$1]}${c_e}"
+      warn_msg "$(failed_copy_to_root_msg "$loc" "d")\n\t$e1/tree/main/${c_url}${root_dirs[$i]}${c_e}"
     fi
   done
 

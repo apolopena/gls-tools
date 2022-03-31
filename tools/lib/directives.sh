@@ -31,8 +31,9 @@
 # implements lib/long-options.sh and has a warn_msg function
 
 # BEGIN: Globals
-__data_keeps=()
-__data_backups=()
+# Satisfy shellcheck by defining the global variables this script requires but does not define
+project_root=; tmp_dir=; target_dir=; backups_dir=; base_version=;
+__data_keeps=(); __data_backups=()
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile
 gp_df_only_cache_buster_changed=no 
 # Satisfy shellcheck since this is a variable that this script sets but does not use
