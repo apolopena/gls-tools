@@ -35,17 +35,20 @@ project_root=
 # Temporary working directory for the update. Set by init()
 tmp_dir=
 
+# Location for the download of latest version of gls to update the project to. Set by set_target_version()
+target_dir=
+
 # Location for recommended backups (appended in the update routine). Set by init()
 backups_dir=
+
+# Latest release data downloaded from github. Set by init()
+release_json=
 
 # The version to update to. Set by init()
 target_version=
 
 # The version to update from Set by init()
 base_version=
-
-# Location for the download of latest version of gls to update the project to. Set by set_target_version()
-target_dir=
 
 # Files or directories to keep. Set by lib/directives.sh set_directives()
 data_keeps=()
@@ -57,9 +60,6 @@ data_keeps=()
 data_backups=()
 # Satisfy shellcheck since data_backups is defined here but only used by lib/directives.sh
 : "${data_backups[*]}"
-
-# Latest release data downloaded from github. Set by init()
-release_json=
 
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile. Set by init()
 gp_df_only_cache_buster_changed=no
@@ -137,6 +137,7 @@ set_base_version_unknown() {
 # Validates the version number range x.x.x is >= 1.0.0 where x is equal to an integer between 0 and 999
 set_base_version() {
   local ver input question1 question1b ec gp_dir changelog err_p1 err_p2 err_p3 err_p4 err_p4b err_p4c
+
   gp_dir="$(pwd)/.gp"
   changelog="$gp_dir/CHANGELOG.md"
   err_p1="${c_norm_prob}Undectable gls version${c_e}"
@@ -298,18 +299,70 @@ validate_arguments() {
 gls_installation_exists() {
   # v0.0.1 to v0.0.4 See: https://github.com/apolopena/gls-tools/issues/4
   [[ -d .theia && -d bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
-
   # v1.0.0 - latest
   [[ -d .gp/bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
-
   return 1
 }
 
 ### help ###
 # Description:
-# Echoes the help text to stdout 
+# Echoes the help text
 help() {
   echo -e "update-gls command line tool\n\t help TBD GOES HERE"
+}
+
+### init ###
+# Description:
+# Enables colors, validates all arguments passed to this script,
+# sets long options and sets any global strings that need to be colorized
+# A fancy header is written to stdout if this function succeeds ;)
+#
+# Returns 0 if successful, returns 1 if there are any errors
+# Also returns 1 if an existing installation of gitpod-laravel-starter is not detected
+#
+# Note:
+# This function can only be called once and prior to calling update()
+# Subsequent attempts to call this function will result in an error
+init() {
+  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m
+  
+  handle_colors
+
+  gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
+  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not detected${c_e}"
+  curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh)"
+  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead either"
+  run_r_m="Run remotely: ${c_uri}$curl_m${c_e}"
+  run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls install${c_e}"
+  e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
+  e_command="${c_norm_prob}Unsupported Command:${c_e}"
+
+  if ! gls_installation_exists; then 
+    err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
+    abort_msg
+    return 1; 
+  fi
+  
+  # Set globals that other functions will depend on
+  project_root="$(pwd)"
+  backups_dir="$project_root"; # mutated intentionally by update()
+  tmp_dir="$project_root/tmp_gls_update"
+  release_json="$tmp_dir/latest_release.json"
+
+  # Create a temporary working directory that other functions will depend on
+  if ! mkdir -p "$tmp_dir"; then
+    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
+    abort_msg
+    return 1
+  fi
+  
+  # Validate options and arguments
+  if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
+  if ! validate_long_options; then abort_msg && return 1; fi
+  if ! validate_arguments; then abort_msg && return 1; fi
+  
+  # Success. It is now safe to call update()
+  gls_header 'updater'
 }
 
 ### update ###
@@ -317,6 +370,9 @@ help() {
 # Performs the update by calling all the proper routines in the proper order
 # Creates any necessary files or directories any routine might need
 # Handles errors for each routine called or action made
+#
+# Note:
+# init() must be called prior to calling this function
 update() {
   local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c fin_msg1 fin_msg1b
   local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
@@ -370,7 +426,6 @@ update() {
   if ! execute_directives; then abort_msg && return 1; fi
 
   # BEGIN: Update by deleting the old (orig) and coping over the new (target)
-
   # Latest files to copy from target (latest) to orig (current)
   local root_files=(".gitpod.yml" ".gitattributes" ".npmrc" ".gitignore")
 
@@ -390,7 +445,7 @@ update() {
   if ! rm -rf .gp; then
     warn_msg "$warn_msg1\n\t$warn_msg1b"
   fi
-  
+
   # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
   [[ -d .theia ]] && rm -rf .theia
 
@@ -416,66 +471,12 @@ update() {
       warn_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}" "f")/t$e1/tree/main/${c_url}.gitpod.Dockerfile${c_e}"
     fi
   fi
+  # END: Update by deleting the old (orig) and coping over the new (target)
   
   # Success
   gls_header success
   echo -e "$fin_msg1 $fin_msg1b"
   return 0
-  # END: Update by deleting the old (orig) and coping over the new (target)
-}
-
-### init ###
-# Description:
-# Enables colors, validates all arguments passed to this script,
-# sets long options and sets any global strings that need to be colorized
-# A fancy header is written to stdout if this function succeeds ;)
-#
-# Returns 0 if successful, returns 1 if there are any errors
-# Also returns 1 if an existing installation of gitpod-laravel-starter is not detected
-#
-# Note:
-# This function can only be called once.
-# Subsequent attempts to call this function will result in an error
-init() {
-  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m
-  
-  handle_colors
-
-  gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not detected${c_e}"
-  curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh)"
-  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead either"
-  run_r_m="Run remotely: ${c_uri}$curl_m${c_e}"
-  run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls install${c_e}"
-  e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
-  e_command="${c_norm_prob}Unsupported Command:${c_e}"
-
-  if ! gls_installation_exists; then 
-    err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
-    abort_msg
-    return 1; 
-  fi
-  
-  # Set globals that other functions will depend on
-  project_root="$(pwd)"
-  backups_dir="$project_root"; # mutated intentionally by update()
-  tmp_dir="$project_root/tmp_gls_update"
-  release_json="$tmp_dir/latest_release.json"
-
-  # Create a temporary working directory that other functions will depend on
-  if ! mkdir -p "$tmp_dir"; then
-    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
-    abort_msg
-    return 1
-  fi
-  
-  # Validate options and arguments
-  if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! validate_long_options; then abort_msg && return 1; fi
-  if ! validate_arguments; then abort_msg && return 1; fi
-  
-  # Success. It is now safe to call update()
-  gls_header 'updater'
 }
 
 ### cleanup ###
@@ -493,6 +494,7 @@ cleanup() {
   e_msg1="${c_norm_prob}cleanup() failed:\n\t${c_uri}$tmp_dir${c_e}"
   e_msg1b="\n\t${c_norm_prob}is not a sub directory of:\n\t${c_uri}$project_root${c_e}"
 
+  # Delete the temporary working directory
   if is_subpath "$project_root" "$tmp_dir"; then
     [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
   else
@@ -547,7 +549,7 @@ main() {
     load_get_deps
   fi
 
-  # Now that the loader is loader use it to load the rest of the dependencies
+  # Use the loaded loader it to load the rest of the dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
   # Initialize, update and cleanup
