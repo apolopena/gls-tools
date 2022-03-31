@@ -283,7 +283,7 @@ help() {
 ### init ###
 # Description:
 # Enables colors, validates all arguments passed to this script,
-# sets long options and sets any global strings that need to be colorized
+# sets long options and sets any global variables
 # A fancy header is written to stdout if this function succeeds ;)
 #
 # Returns 0 if successful, returns 1 if there are any errors
