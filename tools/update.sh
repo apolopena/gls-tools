@@ -386,13 +386,13 @@ update() {
     fi
   done
 
-  # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
-  [[ -d .theia ]] && rm -rf .theia
-
   # Remove .gp to ensure that no old files remain since we are using cp instead of rsync
   if ! rm -rf .gp; then
     warn_msg "$warn_msg1\n\t$warn_msg1b"
   fi
+  
+  # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
+  [[ -d .theia ]] && rm -rf .theia
 
   e1="${c_norm_prob}You will need to manually copy it from the repository: ${c_url}$gls_url${c_e}"
 
