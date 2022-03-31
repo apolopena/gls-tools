@@ -69,34 +69,6 @@ name() {
   printf '%s' "${c_file_name}update.sh${c_e}"
 }
 
-### warn_msg ###
-# Description:
-# Echos a warning message ($1)
-warn_msg() {
-  echo -e "$(name) ${c_warn}WARNING:${c_e}\n\t$1" 
-}
-
-### err_msg ###
-# Description:
-# Echos an error message ($1)
-err_msg() {
-  echo -e "$(name) ${c_fail}ERROR:${c_e}\n\t$1"
-}
-
-### abort_msg ###
-# Description:
-# Echos an abort message ($1) 
-abort_msg() {
-  echo -e "$(name) ${c_fail}ABORTED${c_e}"
-}
-
-### success_msg ###
-# Description:
-# Echos a success message ($1) 
-success_msg() {
-  echo -e "${c_pass}SUCCESS: ${c_norm}$1${c_e}"
-}
-
 ### set_base_version_unknown ###
 # Description:
 # Sets the base version to the string: unknown
