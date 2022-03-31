@@ -56,11 +56,9 @@ gp_df_only_cache_buster_changed=no
 # Keep shellchack happy by predefining the colors set by lib/colors.sh
 c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
-
 # END: Globals
 
 # BEGIN: functions
-
 
 ### name ###
 # Description:
