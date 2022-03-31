@@ -38,7 +38,7 @@ gp_df_only_cache_buster_changed=no
 # Satisfy shellcheck since this is a variable that this script sets but does not use
 : "$gp_df_only_cache_buster_changed"
 # Satisfy shellcheck happy by predefining the colors we use here. See lib/colors.sh
-c_e=; c_norm=; c_norm_prob=; c_pass=; c_fail=; c_file=;
+c_e=; c_norm=; c_norm_prob=; c_fail=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 # END: Globals
 
