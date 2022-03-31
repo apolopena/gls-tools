@@ -25,45 +25,44 @@ script_args=()
 # Supported options.
 global_supported_options=(
   --help
-  --debug 
   --load-deps-locally
-  --manifest
   --strict
 )
 
-# The version to update to
+# Project root. Never run this script from outside the project root. Set by init()
+project_root=
+
+# Temporary working directory for the update. Set by init()
+tmp_dir=
+
+# Location for recommended backups (appended in the update routine). Set by init()
+backups_dir=
+
+# The version to update to. Set by init()
 target_version=
 
-# The version to update from
+# The version to update from Set by init()
 base_version=
 
-# target_dir conatins the download of latest version of gls to update the project to
-# set in the update routine and deleted in the main routine
+# Location for the download of latest version of gls to update the project to. Set by set_target_version()
 target_dir=
 
-# Location for recommended backups (appended in the update routine)
-backups_dir="$(pwd)"
-
-# Project root. Never run this script from outside the project root!
-project_root="$(pwd)"
-
-# Temporary working directory for the update and is deleted after the script succeeds or fails
-tmp_dir="$project_root/tmp_gls_update"
-
-# Files or directories to keep.
+# Files or directories to keep. Set by lib/directives.sh set_directives()
 data_keeps=()
+# Satisfy shellcheck since data_keeps is defined here but only used by lib/directives.sh
+: "${data_keeps[*]}"
 
 # Files to recommend backing up so they can be merged manually after the update succeeds
+# Set by lib/directives.sh set_directives()
 data_backups=()
+# Satisfy shellcheck since data_backups is defined here but only used by lib/directives.sh
+: "${data_backups[*]}"
 
-# Latest release data downloaded from github
-release_json="$tmp_dir/latest_release.json"
+# Latest release data downloaded from github. Set by init()
+release_json=
 
-# Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile
+# Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile. Set by init()
 gp_df_only_cache_buster_changed=no
-
-# Global message prefixes are declared here but set in init() so they can be conditionally colorized
-note_prefix=
 
 # Keep shellchack happy by predefining the colors set by lib/colors.sh
 c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_fail=; c_file=;
@@ -209,192 +208,6 @@ set_target_version() {
   target_dir="$tmp_dir/$target_version"
 }
 
-### download_release_json ###
-# Description:
-# Downloads the latest gitpod-laravel-starter release json data from github
-# Requires Global:
-# $release_json (a valid github latest release json file)
-download_release_json() {
-  local url msg
-  url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
-  msg="${c_norm}Downloading release data"
-  spinner_task "$msg from:\n\t${c_url}$url${c_e}" 'curl' --silent "$url" -o "$release_json" && echo
-}
-
-### download_latest ###
-# Description:
-# Downloads the .tar.gz of the latest release of gitpod-laravel-starter and extracts it to $target_dir
-# Requires Globals
-# $release_json
-# $target_dir
-download_latest() {
-  local files_to_move=("CHANGELOG.md" "LICENSE" "README.md")
-  local e1 e2 url loc msg ec
-
-  e1="${c_norm_prob}Cannot download/extract latest gls tarball${c_e}"
-  e2="${c_norm_prob}Unable to parse url from ${c_uri}$release_json${c_e}"
-
-  [[ -z $release_json ]] \
-    && err_msg "$e1/n/t${c_norm_prob}Missing required file ${c_uri}$release_json${c_e}" \
-    && return 1
-
-  url="$(sed -n '/tarball_url/p' "$release_json" | grep -o '"https.*"' | tr -d '"')"
-  [[ -z $url ]] && err_msg "$e1\n\t$e2" && return 1
-
-  
-  if ! cd "$target_dir";then
-    err_msg "$e1\n\t${c_norm_prob}internal error, bad target directory: ${c_uri}$target_dir${c_e}"
-    return 1
-  fi
-
-  msg="${c_norm}Downloading and extracting latest release tarball from:\n\t${c_url}$url${c_e}"
-  start_spinner "$msg" && curl -sL "$url" | tar xz --strip=1
-  ec=$?
-  if [[ $ec -eq 0 ]]; then
-    stop_spinner 0
-    echo
-  else
-    stop_spinner 1
-    err_msg "${c_norm_prob}Downloading and extracting the latest release tarball${c_e}"
-    return 1
-  fi
-
-  for i in "${!files_to_move[@]}"; do
-   loc="$target_dir/${files_to_move[$i]}"
-   loc2="$target_dir/.gp/${files_to_move[$i]}"
-    if [[ -f $loc ]]; then
-      if ! mv "$loc" "$loc2"; then
-        msg="${c_norm_prob}Could not move the file\n\t${c_uri}${loc}${c_e}\n${c_norm_prob}to\n\t"
-        warn_msg "$msg${c_uri}${loc2}${c_e}"
-      fi
-    fi
-  done
-
-  cd "$project_root" || return 1
-}
-
-### update ###
-# Description:
-# Performs the update by calling all the proper routines in the proper order
-# Creates any necessary files or directories any routine might need
-# Handles errors for each routine called or action made
-update() {
-  local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c fin_msg1 fin_msg1b
-  local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
-
-  e_fail_prefix="${c_norm_prob}update() internal error: Failed to"
-  e1="${c_norm_prob}Version mismatch${c_e}"
-  warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
-  warn_msg1b="${c_norm_prob}Some old files may remain but should not cause any issues${c_e}"
-  warn_msg1c="${c_norm_prob}The old file may remain but should not cause any issues${c_e}"
-  warn_msg1d="${c_norm_prob}Try manually copying this file from the repo to the project root${c_e}"
-  gls_url="https://github.com/apolopena/gitpod-laravel-starter"
-
-  # Create working directory
-  if ! mkdir -p "$tmp_dir"; then
-    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
-    abort_msg
-    return 1
-  fi
-
-  # Download release data
-  if ! download_release_json; then abort_msg && return 1; fi
-
-  # Set base and target versions, identical version message and required global directories 
-  if ! set_target_version; then abort_msg && return 1; fi
-  [[ ! -d $target_dir ]] && mkdir "$target_dir"
-  if ! set_base_version; then set_base_version_unknown; fi
-  base_ver_txt="${c_number}$base_version${c_e}"
-  target_ver_txt="${c_number}$target_version${c_e}"
-  fin_msg1="${c_norm_b}gitpod-laravel-starter has been updated to the latest version"
-  fin_msg1b="${c_number}v$target_ver_txt${c_e}"
-  same_ver1="$note_prefix ${c_norm_prob}Your current version $base_ver_txt"
-  same_ver1b="${c_norm_prob}and the latest version $target_ver_txt ${c_norm_prob}are the same${c_e}"
-  same_ver1c="${c_norm}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm} is already up to date${c_e}"
-  if [[ $backups_dir == $(pwd) ]]; then
-    backups_dir="${backups_dir}/GLS_BACKUPS_v$base_version"
-    [[ -d $backups_dir ]] && rm -rf "$backups_dir"
-    mkdir "$backups_dir"
-  fi
-
-  # Validate base and target versions
-  if [[ $base_version == "$target_version" ]]; then
-    echo -e "$same_ver1 $same_ver1b\n$same_ver1c" && return 1
-  fi
-  if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
-    e2="${c_norm_prob}Your current version v${c_e}$base_ver_txt "
-    e2b="${c_norm_prob}must be less than the latest version v${c_e}$target_ver_txt"
-    err_msg "$e1\n\t$e2$e2b" && abort_msg && return 1
-  fi
-
-  # Set directives, download and extract latest release and execute directives
-  update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
-  update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
-  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm}...\n${c_e}"
-  if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
-  if ! download_latest; then abort_msg && return 1; fi
-  if ! execute_directives; then abort_msg && return 1; fi
-
-  # BEGIN: Update by deleting the old (orig) and coping over the new (target)
-
-  # Latest files to copy from target (latest) to orig (current)
-  local root_files=(".gitpod.yml" ".gitattributes" ".npmrc" ".gitignore")
-
-  # Latest directories to copy from target (latest) to orig (current)
-  local root_dirs=(".gp" ".vscode" ".github")
-
-  # Femove files before copying just in case they are in the current (orig) but not the latest (target)
-  for i in "${!root_files[@]}"; do
-    if [[ -f ${root_files[$i]} ]]; then
-      if ! rm "${root_files[$i]}"; then
-        warn_msg "${c_norm_prob}Could not delete the file ${c_uri}${root_files[$i]}${c_e}\n\t$warn_msg1c"
-      fi
-    fi
-  done
-
-  # Commented out belwo line because I think we dont need this since cp will overwrite the file no matter what
-  # and this file will always be in the project root no matter what version of gitpod-laravel-starter is used
-  #[[ $gp_df_only_cache_buster_changed == no && -f .gitpod.Dockerfile ]] && rm .gitpod.Dockerfile
-
-  # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
-  [[ -d .theia ]] && rm -rf .theia
-
-  # Remove .gp to ensure that no old files remain since we are using cp instead of rsync
-  if ! rm -rf .gp; then
-    warn_msg "$warn_msg1\n\t$warn_msg1b"
-  fi
-
-  e1="${c_norm_prob}You will need to manually copy it from the repository: ${c_url}$gls_url${c_e}"
-
-  for i in "${!root_dirs[@]}"; do
-    loc="$target_dir/${root_dirs[$1]}"
-    if ! cp -r "$loc" "$project_root"; then
-      warn_msg "$(failed_copy_to_root_msg "$loc" "d")\n\t$e1/tree/main/${c_url}${root_dirs[$1]}${c_e}"
-    fi
-  done
-
-  for i in "${!root_files[@]}"; do
-    loc="$target_dir/${root_files[$i]}"
-    if ! cp "$loc" "$project_root/${root_files[$i]}"; then
-      warn_msg "${c_norm_prob}Could not copy the file ${c_uri}${loc}${c_e}\n\t$warn_msg1d"
-    fi
-  done
-
-  if [[ $gp_df_only_cache_buster_changed == no ]]; then
-    file="$target_dir/.gitpod.Dockerfile"
-    if ! cp "$file" "$project_root"; then
-      warn_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}" "f")/t$e1/tree/main/${c_url}.gitpod.Dockerfile${c_e}"
-    fi
-  fi
-  
-  ##echo -e "${c_s_bold}${c_pass}FINISHED:${c_norm_b} $update_msg1 $update_msg2"
-  
-  gls_header success
-  echo -e "$fin_msg1 $fin_msg1b"
-  return 0
-  # END: Update by deleting the old (orig) and coping over the new (target)
-}
-
 ### load_get_deps ###
 # Description:
 # Downloads and sources dependencies $@
@@ -461,7 +274,7 @@ validate_long_options() {
 # Description:
 # Validate the scripts arguments
 #
-# NOte:
+# Note:
 # Commands and short options are illegal. This functions handles them quick and dirty
 validate_arguments() {
   local e_bad_opt e_bad_short_opt
@@ -499,6 +312,118 @@ help() {
   echo -e "update-gls command line tool\n\t help TBD GOES HERE"
 }
 
+### update ###
+# Description:
+# Performs the update by calling all the proper routines in the proper order
+# Creates any necessary files or directories any routine might need
+# Handles errors for each routine called or action made
+update() {
+  local ec e1 e2 e2b update_msg1 update_msg2 warn_msg1 warn_msg1b warn_msg1b warn_msg1c fin_msg1 fin_msg1b
+  local base_ver_txt target_ver_txt file same_ver1 same_ver1b same_ver1c gls_url loc e_fail_prefix
+
+  e_fail_prefix="${c_norm_prob}update() internal error: Failed to"
+  e1="${c_norm_prob}Version mismatch${c_e}"
+  warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
+  warn_msg1b="${c_norm_prob}Some old files may remain but should not cause any issues${c_e}"
+  warn_msg1c="${c_norm_prob}The old file may remain but should not cause any issues${c_e}"
+  warn_msg1d="${c_norm_prob}Try manually copying this file from the repo to the project root${c_e}"
+  gls_url="https://github.com/apolopena/gitpod-laravel-starter"
+
+  # Download release data
+  if ! download_release_json "$release_json"; then abort_msg && return 1; fi
+
+  # Set base and target versions, identical version message and required global directories 
+  if ! set_target_version; then abort_msg && return 1; fi
+  [[ ! -d $target_dir ]] && mkdir "$target_dir"
+  if ! set_base_version; then set_base_version_unknown; fi
+  base_ver_txt="${c_number}$base_version${c_e}"
+  target_ver_txt="${c_number}$target_version${c_e}"
+  fin_msg1="${c_norm_b}gitpod-laravel-starter has been updated to the latest version"
+  fin_msg1b="${c_number}v$target_ver_txt${c_e}"
+  same_ver1="${c_file_name}Notice:${c_e} ${c_norm_prob}Your current version $base_ver_txt"
+  same_ver1b="${c_norm_prob}and the latest version $target_ver_txt ${c_norm_prob}are the same${c_e}"
+  same_ver1c="${c_norm}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm} is already up to date${c_e}"
+  if [[ $backups_dir == $(pwd) ]]; then
+    backups_dir="${backups_dir}/GLS_BACKUPS_v$base_version"
+    [[ -d $backups_dir ]] && rm -rf "$backups_dir"
+    mkdir "$backups_dir"
+  fi
+
+  # Validate base and target versions
+  if [[ $base_version == "$target_version" ]]; then
+    echo -e "$same_ver1 $same_ver1b\n$same_ver1c" && return 1
+  fi
+  if [[ $(comp_ver_lt "$base_version" "$target_version") == 0 ]]; then
+    e2="${c_norm_prob}Your current version v${c_e}$base_ver_txt "
+    e2b="${c_norm_prob}must be less than the latest version v${c_e}$target_ver_txt"
+    err_msg "$e1\n\t$e2$e2b" && abort_msg && return 1
+  fi
+
+  
+  update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
+  update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
+  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm}...\n${c_e}"
+
+  # Set directives, download/extract latest release and execute directives
+  if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
+  if ! install_latest_tarball "$release_json"; then abort_msg && return 1; fi
+  if ! execute_directives; then abort_msg && return 1; fi
+
+  # BEGIN: Update by deleting the old (orig) and coping over the new (target)
+
+  # Latest files to copy from target (latest) to orig (current)
+  local root_files=(".gitpod.yml" ".gitattributes" ".npmrc" ".gitignore")
+
+  # Latest directories to copy from target (latest) to orig (current)
+  local root_dirs=(".gp" ".vscode" ".github")
+
+  # Remove files before copying just in case they are in the current (orig) but not the latest (target)
+  for i in "${!root_files[@]}"; do
+    if [[ -f ${root_files[$i]} ]]; then
+      if ! rm "${root_files[$i]}"; then
+        warn_msg "${c_norm_prob}Could not delete the file ${c_uri}${root_files[$i]}${c_e}\n\t$warn_msg1c"
+      fi
+    fi
+  done
+
+  # Remove the Theia configurations, see https://github.com/apolopena/gitpod-laravel-starter/issues/216
+  [[ -d .theia ]] && rm -rf .theia
+
+  # Remove .gp to ensure that no old files remain since we are using cp instead of rsync
+  if ! rm -rf .gp; then
+    warn_msg "$warn_msg1\n\t$warn_msg1b"
+  fi
+
+  e1="${c_norm_prob}You will need to manually copy it from the repository: ${c_url}$gls_url${c_e}"
+
+  for i in "${!root_dirs[@]}"; do
+    loc="$target_dir/${root_dirs[$1]}"
+    if ! cp -r "$loc" "$project_root"; then
+      warn_msg "$(failed_copy_to_root_msg "$loc" "d")\n\t$e1/tree/main/${c_url}${root_dirs[$1]}${c_e}"
+    fi
+  done
+
+  for i in "${!root_files[@]}"; do
+    loc="$target_dir/${root_files[$i]}"
+    if ! cp "$loc" "$project_root/${root_files[$i]}"; then
+      warn_msg "${c_norm_prob}Could not copy the file ${c_uri}${loc}${c_e}\n\t$warn_msg1d"
+    fi
+  done
+
+  if [[ $gp_df_only_cache_buster_changed == no ]]; then
+    file="$target_dir/.gitpod.Dockerfile"
+    if ! cp "$file" "$project_root"; then
+      warn_msg "$(failed_copy_to_root_msg "${c_uri}$file${c_e}" "f")/t$e1/tree/main/${c_url}.gitpod.Dockerfile${c_e}"
+    fi
+  fi
+  
+  # Success
+  gls_header success
+  echo -e "$fin_msg1 $fin_msg1b"
+  return 0
+  # END: Update by deleting the old (orig) and coping over the new (target)
+}
+
 ### init ###
 # Description:
 # Enables colors, validates all arguments passed to this script,
@@ -512,7 +437,7 @@ help() {
 # This function can only be called once.
 # Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m run_l_m
+  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m
   
   handle_colors
 
@@ -524,18 +449,32 @@ init() {
   run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls install${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
   e_command="${c_norm_prob}Unsupported Command:${c_e}"
-  note_prefix="${c_file_name}Notice:${c_e}"
 
   if ! gls_installation_exists; then 
     err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
     abort_msg
     return 1; 
   fi
+  
+  # Set globals that other functions will depend on
+  project_root="$(pwd)"
+  backups_dir="$project_root"; # mutated intentionally by update()
+  tmp_dir="$project_root/tmp_gls_update"
+  release_json="$tmp_dir/latest_release.json"
 
+  # Create a temporary working directory that other functions will depend on
+  if ! mkdir -p "$tmp_dir"; then
+    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
+    abort_msg
+    return 1
+  fi
+  
+  # Validate options and arguments
   if ! set_long_options "${script_args[@]}"; then err_msg "$e_long_options" && abort_msg && return 1; fi
-  if ! validate_long_options; then echo bad long options; abort_msg && return 1; fi
-  if ! validate_arguments; then echo bad arguments; abort_msg && return 1; fi
-
+  if ! validate_long_options; then abort_msg && return 1; fi
+  if ! validate_arguments; then abort_msg && return 1; fi
+  
+  # Success. It is now safe to call update()
   gls_header 'updater'
 }
 
@@ -581,7 +520,15 @@ cleanup() {
 # Dependency loading is synchronous and happens on every invocation of the script.
 # init() and update() cleanup after themselves
 main() {
-  local dependencies=('util.sh' 'color.sh' 'header.sh' 'spinner.sh' 'long-option.sh' 'directives.sh')
+  local dependencies=(
+                       'util.sh'
+                       'color.sh'
+                       'header.sh'
+                       'spinner.sh'
+                       'long-option.sh'
+                       'directives.sh'
+                       'download.sh'
+                       )
   local possible_option=() 
   local abort="update aborted"
   local ec
