@@ -283,14 +283,6 @@ validate_arguments() {
   return 0
 }
 
-gls_installation_exists() {
-  # v0.0.1 to v0.0.4 See: https://github.com/apolopena/gls-tools/issues/4
-  [[ -d .theia && -d bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
-  # v1.0.0 - latest
-  [[ -d .gp/bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
-  return 1
-}
-
 ### help ###
 # Description:
 # Echoes the help text

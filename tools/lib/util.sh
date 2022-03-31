@@ -89,3 +89,14 @@ gls_version() {
   echo "$ver"
   return 0
 }
+
+### gls_installation_exists ###
+# Description:
+# Verifies if an existing installation of gitpod-laravel-starter exists
+gls_installation_exists() {
+  # v0.0.1 to v0.0.4 See: https://github.com/apolopena/gls-tools/issues/4
+  [[ -d .theia && -d bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
+  # v1.0.0 - latest
+  [[ -d .gp/bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
+  return 1
+}
