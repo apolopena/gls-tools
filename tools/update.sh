@@ -50,17 +50,6 @@ target_version=
 # The version to update from Set by init()
 base_version=
 
-# Files or directories to keep. Set by lib/directives.sh set_directives()
-data_keeps=()
-# Satisfy shellcheck since data_keeps is defined here but only used by lib/directives.sh
-: "${data_keeps[*]}"
-
-# Files to recommend backing up so they can be merged manually after the update succeeds
-# Set by lib/directives.sh set_directives()
-data_backups=()
-# Satisfy shellcheck since data_backups is defined here but only used by lib/directives.sh
-: "${data_backups[*]}"
-
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile. Set by init()
 gp_df_only_cache_buster_changed=no
 
