@@ -13,6 +13,9 @@
 # Avoid the 'god object' even though the 'utils' pattern this script uses encourages it ;)
 
 
+# Satisfy shellcheck by defining the colors that may be used by this script
+c_norm_prob=; c_uri=; c_e;
+
 ### url_exists ###
 # Description:
 # Essentially a 'dry run' for curl. Returns 1 if the url ($1) is a 404. Returns 0 otherwise.
@@ -99,4 +102,14 @@ gls_installation_exists() {
   # v1.0.0 - latest
   [[ -d .gp/bash && -f .gitpod.yml && -f .gitpod.Dockerfile ]] && return 0
   return 1
+}
+
+failed_copy_to_root_msg() {
+  local msg msg_p="${c_norm_prob}Failed to copy target"
+  case $2 in
+    f ) msg="$msg_p file ${c_uri}$1${c_e}${c_norm_prob} to the project root";;
+    d ) msg="$msg_p directory ${c_uri}$1${c_e}${c_norm_prob} to the project root";;
+    * ) msg="$msg_p ${c_uri}$1${c_e}${c_norm_prob} to the project root"
+  esac
+  echo -e "$msg"
 }
