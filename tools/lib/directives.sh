@@ -7,9 +7,6 @@
 #
 # directives.sh
 #
-# Requires:
-# utils.sh
-#
 # Description:
 # Executes directives from a manifest to either keep or backup files or directories
 # Files and driectories are recommended to be backed up if they have the potential to share project data
