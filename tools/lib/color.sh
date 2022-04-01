@@ -60,6 +60,8 @@ c_13='\e[38;5;185m' # Khaki (Khaki3)
 c_14='\e[38;5;119m' # Light Green (LightGreen)
 c_15='\e[38;5;190m' # Yellow Chartreuse (Yellow3)
 c_16='\e[38;5;154m' # Ultrabrite Green (GreenYellow)
+c_17='\e[1;32m' # spinner.sh Green
+c_18='\e[1;31m' # spinner.sh Red
 # END: Globals
 
 # BEGIN: Functions
@@ -97,6 +99,8 @@ set_colors() {
   c_number="$c_13"
   c_choice="$c_5"
   c_prompt="$c_4"
+  c_spinner_green="$c_17"
+  c_spinner_red="$c_18"
 }
 
 ###  ###
@@ -104,11 +108,11 @@ set_colors() {
 # Clears all color values
 remove_colors() {
   # clear all global colors
-  for i in {1..16}; do eval "c_$i="; done
+  for i in {1..18}; do eval "c_$i="; done
 
   # Clear all set colors
   c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_warn2=; c_fail=; c_file=;
-  c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
+  c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=; c_spinner_green=; c_spinner_red=;
 }
 
 ###  ###
@@ -117,6 +121,13 @@ remove_colors() {
 # Color values are cleared out if this script is piped or redirected
 handle_colors() {
   if use_color; then set_colors; else remove_colors; fi
+}
+
+raw_spinner_color() {
+  case $1 in
+    'green') echo "$c_spinner_green";;
+    'red'  ) echo "$c_spinner_red";;
+  esac
 }
 
 

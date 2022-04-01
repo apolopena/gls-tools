@@ -18,11 +18,17 @@
 # Example usage:
 # . header.sh && gls_header 'installer'
 
+# Satisfy shellcheck, script_args is set from outside this library
+script_args=
 
-### no_color ###
+### _use_color ###
 # Description: Internal Flag function for determining when to use colors.
-# returns 0 if stdout is a terminal, returns 1 otherwise
-if [[ ! -t 1 ]]; then
+# Returns 0 if stdout is a terminal or the calling script has the option --no-colors
+# Returns 1 otherwise
+# shellcheck disable=SC2143
+if [[ ! -t 1 ]] \
+   || [[ "$(printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--no-colors"; echo $?)" -eq 0 ]]
+then
   _use_color() {
     false
   }

@@ -31,11 +31,16 @@ function _spinner() {
 
     local on_success="DONE"
     local on_fail="FAIL"
-    local white="\e[1;37m"
     local green="\e[1;32m"
     local red="\e[1;31m"
     local nc="\e[0m"
-    local colors=("\e[38;5;22m" "\e[38;5;34m" "\e[38;5;40m" "\e[38;5;46m")
+
+    # Handle colors from color.sh lib if it is there
+    if declare -f "raw_spinner_color" > /dev/null; then
+      green="$(raw_spinner_color green)"
+      red="$(raw_spinner_color red)"
+    fi
+
 
     case $1 in
         start)
@@ -53,7 +58,6 @@ function _spinner() {
 
             while :
             do
-                #printf "\b${colors[$(($i % 4))]}${sp:i++%${#sp}:1}"; printf "\e[0m"
                 printf "\b${sp:i++%${#sp}:1}"
                 sleep $delay
             done
