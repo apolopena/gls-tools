@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck source=/dev/null
+# shellcheck source=/dev/null # Allow dynamic source paths
 #
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
@@ -7,27 +7,25 @@
 # update.sh
 #
 # Description:
-# Updates an existing project build on gitpod-laravel-starter to the latest version.
-# Automated update with step by step merging of critical files in your existing project.
+# Updates an existing project built on gitpod-laravel-starter to the latest version.
+# Interactive update with recommended backup for files and directories that are likely to contain.
+# project specific data.
+# Interactivity can be skipped by piping yes | or yes n | into this script. Do so at your own risk.
 #
 # Notes:
 # Supports gitpod-laraver starter versions >= v1.0.0
-# For specifics on what files are updated, replaced, left alone, etc.. see: up-manifest.yml @
-# https://github.com/apolopena/gitpod-laravel-starter/tree/main/.gp/updater-manifest.yml
+# For specifics on what files are updated, replaced, kept, etc.. see: .latest_gls_manifest @
+# https://github.com/apolopena/gls-tools/blob/main/.latest_gls_manifest
 
 
 # BEGIN: Globals
 # Never mutate globals them once they are set unless they are a flag
 
-# The arguments passed to this script. Set from main().
+# The arguments passed to this script. Set by main().
 script_args=()
 
-# Supported options.
-global_supported_options=(
-  --help
-  --load-deps-locally
-  --strict
-)
+# Options this script supports. Set by main()
+global_supported_options=()
 
 # Project root. Never run this script from outside the project root. Set by init()
 project_root=
@@ -38,7 +36,7 @@ tmp_dir=
 # Location for the download of latest version of gls to update the project to. Set by set_target_version()
 target_dir=
 
-# Location for recommended backups (appended in the update routine). Set by init()
+# Location for recommended backups. Set by init(). Appended by update().
 backups_dir=
 
 # Latest release data downloaded from github. Set by init()
@@ -53,7 +51,7 @@ base_version=
 # Flag for the edge case where only the cache buster has been changed in .gitpod.Dockerfile. Set by init()
 gp_df_only_cache_buster_changed=no
 
-# Keep shellchack happy by predefining the colors set by lib/colors.sh
+# Satisfy shellcheck by predefining the colors we use from lib/colors.sh
 c_e=; c_s_bold=; c_norm=; c_norm_b=; c_norm_prob=; c_pass=; c_warn=; c_file=;
 c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 # END: Globals
@@ -62,9 +60,7 @@ c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 ### name ###
 # Description:
-# Prints the file name of this script
-# This is hardcoded not done dynamically such as via $(basename ${BASH_SOURCE[0]}) because the
-# result is a number rather than a name when the script is ran using process substitution
+# Prints the file name of this script. Hardcoded so it works with process substitution.
 name() {
   printf '%s' "${c_file_name}update.sh${c_e}"
 }
@@ -74,6 +70,7 @@ name() {
 # Sets the base version to the string: unknown
 set_base_version_unknown() {
   local unknown_msg1 unknown_msg1b
+
   unknown_msg1="${c_norm}The current gls version has been set to '${c_file_name}unknown${c_e}"
   unknown_msg1b="${c_norm}' but is assumed to be ${c_file_name}>= ${c_e}${c_number}1.0.0${c_e}"
   base_version='unknown' && echo -e "$unknown_msg1$unknown_msg1b"
@@ -138,6 +135,7 @@ set_base_version() {
 # $release_json (a valid github latest release json file)
 set_target_version() {
   local regexp e1 e1b e2 rle
+
   regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
   e1="${c_norm_prob}Cannot set target version"
   e1b="Missing required file ${c_uri}$release_json${c_e}"
@@ -160,7 +158,7 @@ set_target_version() {
 
 ### load_get_deps ###
 # Description:
-# Downloads and sources dependencies $@
+# Downloads and sources dependencies $@ in parallel
 # using the base url: https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/
 load_get_deps() {
   local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
@@ -168,9 +166,7 @@ load_get_deps() {
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
     err_msg "Failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
-
-  source \
-  <(curl -fsSL "$get_deps_url" &)
+  source <(curl -fsSL "$get_deps_url" &)
   ec=$?;
   if [[ $ec != 0 ]] ; then echo -e "Failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
 }
@@ -183,7 +179,7 @@ load_get_deps_locally() {
 
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
   if ! source "$this_script_dir/lib/get-deps.sh"; then
-    "Failed to source the loader from the local file system:\n\t$get_deps_url"
+    echo -e "Failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
   fi
 }
@@ -197,7 +193,7 @@ load_get_deps_locally() {
 # Returns 1 if the list_long_options function is not sourced
 #
 # Note:
-# This function relies on lib/long-option.sh
+# This function relies on lib/long-option.sh and the global variable global_supported_options
 # For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
 validate_long_options() {
   local failed options;
@@ -227,8 +223,9 @@ validate_long_options() {
 # Note:
 # Commands and short options are illegal. This functions handles them quick and dirty
 validate_arguments() {
-  local e_bad_opt e_bad_short_opt
+  local e_bad_opt e_bad_short_opt e_command
 
+  e_command="${c_norm_prob}Unsupported Command:${c_e}"
   e_bad_short_opt="${c_norm_prob}Illegal short option:${c_e}"
   e_bad_opt="${c_norm_prob}Illegal option:${c_e}"
 
@@ -265,7 +262,7 @@ help() {
 # This function can only be called once and prior to calling update()
 # Subsequent attempts to call this function will result in an error
 init() {
-  local arg gls e_not_installed e_long_options e_command nothing_m run_r_m
+  local arg gls e_not_installed e_long_options nothing_m run_r_m
   
   handle_colors
 
@@ -276,7 +273,6 @@ init() {
   run_r_m="Run remotely: ${c_uri}$curl_m${c_e}"
   run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls install${c_e}"
   e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
-  e_command="${c_norm_prob}Unsupported Command:${c_e}"
 
   if ! gls_installation_exists; then 
     err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
@@ -286,7 +282,7 @@ init() {
   
   # Set globals that other functions will depend on
   project_root="$(pwd)"
-  backups_dir="$project_root"; # mutated intentionally by update()
+  backups_dir="$project_root"; # Will be mutated intentionally by update()
   tmp_dir="$project_root/tmp_gls_update"
   release_json="$tmp_dir/latest_release.json"
 
@@ -309,8 +305,8 @@ init() {
 ### update ###
 # Description:
 # Performs the update by calling all the proper routines in the proper order
-# Creates any necessary files or directories any routine might need
-# Handles errors for each routine called or action made
+# Creates any necessary global files and directories any function might need
+# Handles errors for each function called
 #
 # Note:
 # init() must be called prior to calling this function
@@ -340,7 +336,7 @@ update() {
   same_ver1="${c_file_name}Notice:${c_e} ${c_norm_prob}Your current version $base_ver_txt"
   same_ver1b="${c_norm_prob}and the latest version $target_ver_txt ${c_norm_prob}are the same${c_e}"
   same_ver1c="${c_norm}${c_s_bold}gitpod-laravel-starter${c_e}${c_norm} is already up to date${c_e}"
-  if [[ $backups_dir == $(pwd) ]]; then
+  if [[ $backups_dir == "$project_root" ]]; then
     backups_dir="${backups_dir}/GLS_BACKUPS_v$base_version"
     [[ -d $backups_dir ]] && rm -rf "$backups_dir"
     mkdir "$backups_dir"
@@ -453,14 +449,15 @@ cleanup() {
 # Description:
 # Main routine
 # Order specific:
-#   1. Set local aand global values
-#   2. Load get-deps.sh, it contains get_deps() which is used to load the rest of the dependencies
+#   1. Set local and global values
+#   2. Load lib/get-deps.sh, it contains get_deps() which is used to load the rest of the dependencies
 #   3. Load the rest of the dependencies using get_deps()
-#   3. Initialize: call init()
-#   4. Update: call update(). Clean up if the update fails
+#   3. Initialize by calling init()
+#   4. Update by calling update(). Clean up if the update fails
 #
 # Note:
-# Dependency loading is synchronous and happens on every invocation of the script.
+# Dependency loading is synchronous and happens on every invocation of the script
+# unless the global option --load-deps-locally is used
 # init() and update() cleanup after themselves
 main() {
   local dependencies=(
@@ -476,8 +473,13 @@ main() {
   local abort="update aborted"
   local ec
 
-  # Set this global once and never touch it again
+  # Set globals once and never touch them again
   script_args=("$@");
+  global_supported_options=(
+    --help
+    --load-deps-locally
+    --strict
+  )
 
   # Process the --help directive first since it requires no dependencies to do so
   [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1

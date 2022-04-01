@@ -16,6 +16,14 @@
 # Satisfy shellcheck by defining the colors that may be used by this script
 c_norm_prob=; c_uri=; c_pass=; c_norm=; c_warn=; c_fail=; c_e=;
 
+
+### success_msg ###
+# Description:
+# Echos a success message ($1) 
+success_msg() {
+  echo -e "${c_pass}SUCCESS: ${c_norm}$1${c_e}"
+}
+
 ### warn_msg ###
 # Description:
 # Echos a warning message ($1)
@@ -44,13 +52,6 @@ err_msg() {
 # The calling script has must have a name() function or a status code indicating failure will be returned
 abort_msg() {
   echo -e "$(name) ${c_fail}ABORTED${c_e}"
-}
-
-### success_msg ###
-# Description:
-# Echos a success message ($1) 
-success_msg() {
-  echo -e "${c_pass}SUCCESS: ${c_norm}$1${c_e}"
 }
 
 ### url_exists ###

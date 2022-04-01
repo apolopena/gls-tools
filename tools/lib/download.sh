@@ -15,16 +15,16 @@
 # BEGIN: Globals
 # Satisfy shellcheck by defining the global variables this script requires but does not define
 project_root=; target_dir=;
-# Satisfy shellcheck happy by predefining the colors we use here. See lib/colors.sh
+# Satisfy shellcheck by predefining the colors we use here. See lib/colors.sh
 c_e=; c_norm=; c_norm_prob=; c_fail=; c_file_name=; c_url=; c_uri=; c_file=;
-# 
+
 
 ### download_release_json ###
 # Description:
 # Downloads the latest gitpod-laravel-starter release json data from github to a file ($1)
 download_release_json() {
   local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
-  local err_pre="${c_file_name}lib/download_release_json() ${c_fail}error:${c_e}${c_norm_prob}"
+  local err_pre="${c_file_name}lib/download.sh download_release_json() ${c_fail}error:${c_e}${c_norm_prob}"
   local msg="${c_norm}Downloading release data from:\n\t${c_url}$url${c_e}"
 
   [[ -z $1 ]] && echo -e "$err_pre missing required file argument" && return 1
@@ -80,8 +80,8 @@ install_latest_tarball() {
   local e_pre e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e10b e11 url loc msg ec
   local release_json="$1"
   
-  e_pre="${c_file_name}lib/install_latest_tarball() ${c_fail}error:${c_e}"
-  w_pre="${c_file_name}lib/install_latest_tarball() ${c_fail}warning:${c_e}"
+  e_pre="${c_file_name}lib/download.sh install_latest_tarball() ${c_fail}error:${c_e}"
+  w_pre="${c_file_name}lib/download.sh install_latest_tarball() ${c_fail}warning:${c_e}"
   e1="${c_norm_prob}cannot download/extract latest gls tarball${c_e}"
   e2="${c_norm_prob}unable to parse the tarball url from\n\t${c_uri}$release_json${c_e}"
   e3="${c_norm_prob}missing required file argument${c_e}"
