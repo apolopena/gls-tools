@@ -52,7 +52,7 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 # Description:
 # Prints the file name of this script. Hardcoded so it works with process substitution
 name() {
-  printf '%s' "${c_file_name}install.sh${c_e}"
+  printf '%s' "${c_file_name}boilerplate.sh${c_e}"
 }
 
 ### help ###
