@@ -69,7 +69,7 @@ load_get_deps() {
   fi
   source <(curl -fsSL "$get_deps_url" &)
   ec=$?;
-  if [[ $ec != 0 ]] ; then echo -e "Failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
+  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
 }
 
 ### load_get_deps_locally ###
@@ -80,7 +80,7 @@ load_get_deps_locally() {
 
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
   if ! source "$this_script_dir/lib/get-deps.sh"; then
-    echo -e "Failed to source the loader from the local file system:\n\t$get_deps_url"
+    echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
   fi
 }
@@ -100,7 +100,7 @@ validate_long_options() {
   local failed options;
 
   if ! declare -f "list_long_options" > /dev/null; then
-    echo -e "${c_norm_prob}Failed to validate options: list_long_options() does not exist${c_e}"
+    echo -e "${c_norm_prob}failed to validate options: list_long_options() does not exist${c_e}"
     return 1
   fi
 
@@ -109,7 +109,7 @@ validate_long_options() {
   for option in $options; do
     option=" ${option} "
     if [[ ! " ${global_supported_options[*]} " =~ $option ]]; then
-        echo -e "${c_norm_prob}Unsupported long option: ${c_pass}$option${c_e}"
+        echo -e "${c_norm_prob}unsupported long option: ${c_pass}$option${c_e}"
         failed=1
     fi
   done
@@ -126,9 +126,9 @@ validate_long_options() {
 validate_arguments() {
   local e_bad_opt e_bad_short_opt e_command
 
-  e_command="${c_norm_prob}Unsupported Command:${c_e}"
-  e_bad_short_opt="${c_norm_prob}Illegal short option:${c_e}"
-  e_bad_opt="${c_norm_prob}Illegal option:${c_e}"
+  e_command="${c_norm_prob}unsupported Command:${c_e}"
+  e_bad_short_opt="${c_norm_prob}illegal short option:${c_e}"
+  e_bad_opt="${c_norm_prob}illegal option:${c_e}"
 
   for arg in "${script_args[@]}"; do
     # Regex: Short options are a single dash or start with a single dash but not a double dash
@@ -186,15 +186,18 @@ set_target_version() {
 init() {
   local arg gls e_installed e_long_options cannot_m run_r_m
   
-  handle_colors
+  # Handle color support first
+  if ! printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--no-colors"; then
+   handle_colors
+  fi
 
   gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_installed="${c_norm_prob}An existing installation of $gls was not detected${c_e}"
+  e_installed="${c_norm_prob}an existing installation of $gls was not detected${c_e}"
   curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh)"
-  cannot_m="${c_norm_prob}Cannot install\n\tTry updating $gls instead either"
-  run_r_m="Run remotely: ${c_uri}$curl_m${c_e}"
-  run_b_m="${c_norm_prob}Or if you have the gls binary installed run: ${c_file}gls update${c_e}"
-  e_long_options="${c_norm_prob}Failed to set global long options${c_e}"
+  cannot_m="${c_norm_prob}cannot install\n\ttry updating $gls instead either"
+  run_r_m="run remotely: ${c_uri}$curl_m${c_e}"
+  run_b_m="${c_norm_prob}or if you have the gls binary installed run: ${c_file}gls update${c_e}"
+  e_long_options="${c_norm_prob}failed to set global long options${c_e}"
 
   if gls_installation_exists; then 
     err_msg "$e_installed\n\t$cannot_m\n\t$run_r_m\n\t$run_b_m"
@@ -210,7 +213,7 @@ init() {
 
   # Create a temporary working directory that other functions will depend on
   if ! mkdir -p "$tmp_dir"; then
-    err_msg "${c_norm_prob}Unable to create required directory ${c_uri}$tmp_dir${c_e}"
+    err_msg "${c_norm_prob}unable to create required directory ${c_uri}$tmp_dir${c_e}"
     abort_msg
     return 1
   fi
@@ -281,7 +284,7 @@ cleanup() {
 
   # Satisfy shellcheck, remove this once the code block below this one is uncommented
   echo "$e_msg1" > /dev/null; echo "$e_msg1b" > /dev/null
-  
+
   # Delete the temporary working directory, comment this out for testing
   #if is_subpath "$project_root" "$tmp_dir"; then
   #  [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"

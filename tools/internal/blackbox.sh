@@ -47,7 +47,13 @@ is_long_option() {
 }
 
 init() {
-  local supported_options=(--use-version-stub --treat-as-unbuilt --strict --load-deps-locally)
+  local supported_options=(
+    --use-version-stub
+    --treat-as-unbuilt
+    --strict
+    --load-deps-locally
+    --no-colors
+  )
   local version urls url ver_regex arg
   ver_regex='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
 
@@ -134,8 +140,8 @@ new_sandbox() {
   if [[ -z $2 ]]; then s='sandbox'; else s="$2"; fi
 
   [[ $(basename "$(pwd)") == "$s" ]] \
-  && echo "Cannot create a new sandbox from within the sandbox" \
-  && echo "Move up a directory and run the script again" \
+  && echo "cannot create a new sandbox from within the sandbox" \
+  && echo "move up a directory and run the script again" \
   && return 1
 
   if [[ -d $s ]]; then
@@ -152,7 +158,7 @@ new_sandbox() {
 install() {
   local msg
 
-  [[ -z $1 ]] && echo "The install command requires a version number argument" && return 1
+  [[ -z $1 ]] && echo "the install command requires a version number argument" && return 1
   if ! version_exists "$1"; then echo "gitpod-laravel-starter version $1 does not exist" && return 1; fi
   
   url="${tarball_urls[$1]}"
@@ -173,11 +179,11 @@ install() {
 new() {
   local msg1 msg2 msg3="To see a list of valid gls versions run: gls version-list"
 
-  [[ -z $1 ]] && echo "The new subommand requires an additional subcommand argument" && return 1
+  [[ -z $1 ]] && echo "the new subommand requires an additional subcommand argument" && return 1
 
   case $1 in 
     sandbox | control-sandbox)
-      [[ -z $2 ]] && echo "The $1 command requires a version argument" && return 1
+      [[ -z $2 ]] && echo "the $1 command requires a version argument" && return 1
       if ! version_exists "$2"; then 
         echo "$1 command requires a valid gls version. Not $2"
         echo "$msg3"
@@ -191,51 +197,51 @@ new() {
     ;;
 
     'double-sandbox')
-      msg1="The $1 command requires two version arguments,"
+      msg1="the $1 command requires two version arguments,"
       msg2="\$1: sandbox version, \$2: control sandbox version"
       [[ -z $2 || -z $3 ]] && echo -e "$msg1\n\t$msg2" && return 1
       if is_long_option "$2"; then echo -e "$msg1\n\t$msg2" && return 1; fi
       if is_long_option "$3"; then echo -e "$msg1\n\t$msg2" && return 1; fi
 
-      msg1="The $1 command requires a valid gls version for the sandbox. Not $2"
-      msg2="The $1 command requires a valid gls version for the control sandbox. Not $2"
+      msg1="the $1 command requires a valid gls version for the sandbox. Not $2"
+      msg2="the $1 command requires a valid gls version for the control sandbox. Not $2"
       if ! version_exists "$2"; then echo -e "$msg1\n$msg3"; return 1; fi
       if ! version_exists "$3"; then echo -e "$msg2\n$msg3"; return 1; fi
 
-      msg1="Creating a new $1 will delete any existing sandbox and the control sandbox for v$3."
+      msg1="reating a new $1 will delete any existing sandbox and the control sandbox for v$3."
       if prompt_y_n "$msg1\n\tProceed"; then
         if new_sandbox "$2"; then
           cd .. || return 1
           if new_sandbox "$3" "control_sandbox_v$3"; then return 0; fi
-          echo "Failed to create control sandbox for v$3"
+          echo "failed to create control sandbox for v$3"
           return 1
         fi
-        echo "Failed to create sandbox for v$2"
+        echo "failed to create sandbox for v$2"
         return 1
       fi
       echo "Command '$1' aborted by user"
     ;;
 
     *)
-      echo "unsupported new subcommand: $1"
+      echo "unsupported new sub command: $1"
     ;;
   esac
 }
 
 
 gls() {
-  if ! init; then echo "$script Internal Error: Initialization failed"; exit 1; fi
+  if ! init; then echo "$script internal error: Initialization failed"; exit 1; fi
   
   case "${script_args[1]}" in 
     'install')
       if ! install "${script_args[2]}"; then 
-        echo "$script Error: failed to install gitpod-laravel-starter release version ${script_args[2]}"
+        echo "$script error: failed to install gitpod-laravel-starter release version ${script_args[2]}"
       fi
     ;;
 
     'install-latest')
       if ! install "${versions[0]}"; then
-        echo "$script Error: failed to install latest version of gitpod-laravel-starter ${versions[0]}"
+        echo "$script error: failed to install latest version of gitpod-laravel-starter ${versions[0]}"
       fi
     ;;
 
@@ -249,13 +255,13 @@ gls() {
 
     'new')
       if ! new "${script_args[2]}" "${script_args[3]}" "${script_args[4]}"; then 
-        echo "Error: new subcommand failed";
+        echo "error: new subcommand failed";
       fi
     ;;
 
     'test-update')
       local ver_regex='^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$'
-      [[ $(basename "$(pwd)") == 'sandbox' ]] && echo "You cannot be in the sandbox. try cd .. first" && exit 1
+      [[ $(basename "$(pwd)") == 'sandbox' ]] && echo "You cannot be in the sandbox. Try cd .. first." && exit 1
       [[ -z $2 ]] && echo "test-update-locally requires a version argument" && exit 1
       [[ ! $2 =~ $ver_regex ]] && echo -e "bad version arg: $2\nverion argument must be first" && exit 1
       local ver="$2"; shift; shift
@@ -263,7 +269,7 @@ gls() {
     ;;
 
     *)
-      echo "gls subcommand not found: ${script_args[1]}"
+      echo "gls sub command not found: ${script_args[1]}"
     ;;
   esac
   
