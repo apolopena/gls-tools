@@ -58,7 +58,7 @@ abort_msg() {
 # Description:
 # Essentially a 'dry run' for curl. Returns 1 if the url ($1) is a 404. Returns 0 otherwise.
 _url_exists() {
-  [[ -z $1 ]] && echo "Internal error: No url argument" && return 1
+  [[ -z $1 ]] && echo "internal error: no url argument" && return 1
   if ! curl --head --silent --fail "$1" &> /dev/null; then return 1; fi
 }
 

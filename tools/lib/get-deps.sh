@@ -48,7 +48,7 @@ get_deps() {
   if [[ $load_locally == yes ]]; then
     for i in "${deps[@]}"; do
       uri="$this_script_dir/$i"
-      if ! source "$uri"; then echo "$e_pre Unable source the required local dependency: $uri"; return 1; fi
+      if ! source "$uri"; then echo "$e_pre unable source the required local dependency: $uri"; return 1; fi
     done
     return 0
   fi
@@ -57,7 +57,7 @@ get_deps() {
     url="${base_url}/$i"
     if curl --head --silent --fail "$url" &> /dev/null; then
       source <(curl -fsSL "$url" &); ec=$?
-      [[ $ec != 0 ]] && echo "$e_pre Unable to source the required dependency from: $url" && return 1
+      [[ $ec != 0 ]] && echo "$e_pre unable to source the required dependency from: $url" && return 1
       wait;
     else
       echo "$e_pre 404 error at url: $url"

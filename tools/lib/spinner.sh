@@ -124,10 +124,10 @@ function decode_spinner_msg() {
 # Any occurrence of @@@ in a spinner message will be replaced with a single space character
 function spinner_task() {
   local e_pre msg ec cmd show_error
-  e_pre="Spinner task failed:"
+  e_pre="spinner task failed:"
 
-  [[ -z $1 ]] && echo "$e_pre Missing message argument" && return 1
-  [[ -z $2 ]] && echo "$e_pre Missing command argument" && return 1
+  [[ -z $1 ]] && echo "$e_pre missing message argument" && return 1
+  [[ -z $2 ]] && echo "$e_pre missing command argument" && return 1
   [[ $3 == '--show-error' ]] && show_error="$3"
   
   msg="$(encode_spinner_msg "$1")"
