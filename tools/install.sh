@@ -152,9 +152,9 @@ set_target_version() {
   local regexp e1 e1b e2 rle
 
   regexp='([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)?'
-  e1="${c_norm_prob}Cannot set target version"
-  e1b="Missing required file ${c_uri}$release_json${c_e}"
-  e2="${c_norm_prob}Failed to parse target version from:\n\t${c_uri}$release_json${c_e}"
+  e1="${c_norm_prob}cannot set target version"
+  e1b="missing required file ${c_uri}$release_json${c_e}"
+  e2="${c_norm_prob}failed to parse target version from:\n\t${c_uri}$release_json${c_e}"
 
   [[ ! -f $release_json ]] && err_msg "$e1\n\t$e1b" && return 1
   
@@ -163,7 +163,7 @@ set_target_version() {
   if [[ -z $target_version ]]; then
     rle="rate limit exceeded"
     if [[ $(grep "message" "$release_json" | grep -o "$rle") == "$rle" ]]; then
-      err_msg "$e2\n\t${c_warn}Github hourly $rle${c_e}" && return 1
+      err_msg "$e2\n\t${c_warn}github hourly $rle${c_e}" && return 1
     fi
     err_msg "$e2" && return 1
   fi
