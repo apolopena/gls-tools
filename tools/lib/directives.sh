@@ -83,22 +83,65 @@ ___is_subpath() {
   fi
 }
 
+### ___is_element ###
+# Description:
+# Internal function for checking if an array contains a value
+# Returns 0 is an array ($1) contains a value ($2)
+# returns 1 if an array ($1) does not contain a value ($2)
+#
+# Note:
+# False positives will/can occur if:
+#  The value contains line breaks like: "my\nvalue"
+#  The array is associative
+___is_element() {
+  local args=("$@")
+  local index="${args[-1]}"
+  printf '%s\n' "${args[@]}" | grep -Fxq -- "$index"
+}
+
 ### set_directives ###
 # Description:
 # Downloads and parses a valid manifest ($1) into global directive arrays 
 # If $1 is not passed in then the global $tmp_dir will be used if it is a valid directory
 # $1 or $tmp_dir should be the temporary working direcotry for an update, install or uninstall
 # If $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
+# Can be used to set any number of directives contained in the manifest ($1) by passing in any number
+# of supported long options as an arguments to this function ($2...$10) as long as they come after the
+# manifest argument ($1)
+# If no supported long options arguments are passed into this function then all directives in the
+# manifest will be set.
 #
 # Note:
 # A hardcoded default manifest will be used if the manifest cannot be downloaded
+# Will error out if an unsupported options are used. See the supported options variable in this function
+# for more details.
 # The following global array will be set if the manifest is successfully parsed:
 # $__data_keeps$ $__data_backups
 set_directives() {
   local err_pre="${c_norm_prob}set_directives() internal error:${c_e}"
+  local e_short_opt="${c_norm_prob} short options are not allowed:"
   local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifest"
   local note_prefix="${c_file_name}Notice:${c_e}"
-  local chunk manifest manifest_file ec msg1 msg1
+  local chunk manifest manifest_file ec msg1 msg1 arg supported_opts opt opts=()
+
+  supported_opts=(
+    --keep
+    --recommend-backup
+  )
+
+  # Handle any options passed into this function
+  for arg in "$@"; do
+    # Error out if it is a short option
+    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && _directives_err_msg "$err_pre$e_short_opt $arg" && return 1
+    # Harvest long options and error out if any of them are not supported
+    if [[ $arg =~ ^--[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$ ]]; then
+      if ___is_element "$arg" "${supported_opts[@]}"; then
+        opts+=("$arg")
+      else
+        _directives_err_msg "$err_pre${c_norm_prob}unsupported long option: $arg"  && return 1
+      fi
+    fi
+  done
 
   if [[ -n $1 && ! -d $1 ]]; then
     _directives_err_msg "$err_pre ${c_norm_prob}bad temp directory argument${c_e}"
@@ -133,20 +176,24 @@ set_directives() {
   fi
 
   # Parse chunks and convert them to global directive arrays
-  if has_directive 'keep' "$manifest_file"; then
-    chunk="$(_parse_manifest_chunk 'keep' "$manifest")"
-    ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-    IFS=$'\n' read -r -d '' -a __data_keeps <<< "$chunk"
-  else
-    echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}keep${c_e}"
+  if ___is_element "${opts[@]}" '--keep'; then
+    if has_directive 'keep' "$manifest_file"; then
+      chunk="$(_parse_manifest_chunk 'keep' "$manifest")"
+      ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
+      IFS=$'\n' read -r -d '' -a __data_keeps <<< "$chunk"
+    else
+      echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}keep${c_e}"
+    fi
   fi
 
-  if has_directive 'recommend-backup' "$manifest_file"; then
-    chunk="$(_parse_manifest_chunk 'recommend-backup' "$manifest")"
-    ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
-    IFS=$'\n' read -r -d '' -a __data_backups <<< "$chunk"
-  else
-    echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}recommend-backup${c_e}"
+  if ___is_element "${opts[@]}" '--recommend-backup'; then
+    if has_directive 'recommend-backup' "$manifest_file"; then
+      chunk="$(_parse_manifest_chunk 'recommend-backup' "$manifest")"
+      ec=$? && [[ $ec != 0 ]] && echo "$chunk" && return 1
+      IFS=$'\n' read -r -d '' -a __data_backups <<< "$chunk"
+    else
+      echo -e "${note_prefix}${c_norm}skipping optional directive: ${c_file}recommend-backup${c_e}"
+    fi
   fi
 
   return 0
