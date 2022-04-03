@@ -122,7 +122,7 @@ set_directives() {
   local e_short_opt="${c_norm_prob} short options are not allowed:"
   local manifest_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/.latest_gls_manifest"
   local note_prefix="${c_file_name}Notice:${c_e}"
-  local chunk manifest manifest_file ec msg1 msg1 arg supported_opts opt opts=()
+  local chunk manifest manifest_file ec msg1 msg1 arg supported_opts opts=()
 
   supported_opts=(
     --only-keep
