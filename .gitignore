@@ -1,7 +1,7 @@
 # Files
-/test.sh
+/test*.sh
 
 # Directories
 /.gp/
-/sandbox/
+/sandbox*/
 /control_sandbox*/
