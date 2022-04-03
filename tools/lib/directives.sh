@@ -107,7 +107,7 @@ ___is_element() {
 # If $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
 # Can be used to set any number of directives contained in the manifest ($1) by passing in any number
 # of supported long options as an arguments to this function ($2...$10) as long as they come after the
-# manifest argument ($1)
+# manifest argument ($1). Supported long options are --keep-only and --recommend-backup-only
 # If no supported long options arguments are passed into this function then all directives in the
 # manifest will be set.
 #
@@ -125,8 +125,8 @@ set_directives() {
   local chunk manifest manifest_file ec msg1 msg1 arg supported_opts opt opts=()
 
   supported_opts=(
-    --keep
-    --recommend-backup
+    --only-keep
+    --only-recommend-backup
   )
 
   # Handle any options passed into this function
