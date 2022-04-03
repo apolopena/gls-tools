@@ -203,10 +203,10 @@ init() {
   fi
 
   gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_installed="${c_norm_prob}an existing installation of $gls was not detected${c_e}"
+  e_installed="${c_norm_prob}An existing installation of $gls was detected${c_e}"
   curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh)"
-  cannot_m="${c_norm_prob}cannot install\n\tTry updating $gls instead either"
-  run_r_m="run remotely: ${c_uri}$curl_m${c_e}"
+  cannot_m="${c_norm_prob}Cannot install on an existing installation\n\tTry updating $gls instead"
+  run_r_m="Run the updater remotely:\n\t${c_uri}$curl_m${c_e}"
   run_b_m="${c_norm_prob}or if you have the gls binary installed run: ${c_file}gls update${c_e}"
   e_long_options="${c_norm_prob}failed to set global long options${c_e}"
 

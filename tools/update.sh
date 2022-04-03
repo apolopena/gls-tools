@@ -270,15 +270,15 @@ init() {
   fi
 
   gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_not_installed="${c_norm_prob}an existing installation of $gls is required but was not detected${c_e}"
+  e_not_installed="${c_norm_prob}An existing installation of $gls is required but was not detected${c_e}"
   curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/install.sh)"
-  nothing_m="${c_norm_prob}nothing to update\n\tTry installing $gls instead either"
-  run_r_m="run remotely: ${c_uri}$curl_m${c_e}"
+  nothing_m="${c_norm_prob}Nothing to update\n\tTry installing $gls instead"
+  run_r_m="Run the installer remotely:\n\t${c_uri}$curl_m${c_e}"
   run_b_m="${c_norm_prob}or if you have the gls binary installed run: ${c_file}gls install${c_e}"
   e_long_options="${c_norm_prob}failed to set global long options${c_e}"
 
   if ! gls_installation_exists; then 
-    err_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
+    warn_msg "$e_not_installed\n\t$nothing_m\n\t$run_r_m\n\t$run_b_m"
     abort_msg
     return 1; 
   fi

@@ -192,15 +192,15 @@ init() {
   fi
 
   gls="${c_pass}gitpod-laravel-starter${c_e}${c_norm_prob}"
-  e_installed="${c_norm_prob}an existing installation of $gls was not detected${c_e}"
+  e_installed="${c_norm_prob}An existing installation of $gls was detected${c_e}"
   curl_m="bash <(curl -fsSL https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/update.sh)"
-  cannot_m="${c_norm_prob}cannot install\n\ttry updating $gls instead either"
-  run_r_m="run remotely: ${c_uri}$curl_m${c_e}"
+  cannot_m="${c_norm_prob}Cannot install on an existing installation\n\tTry updating $gls instead"
+  run_r_m="Run the updater remotely:\n\t${c_uri}$curl_m${c_e}"
   run_b_m="${c_norm_prob}or if you have the gls binary installed run: ${c_file}gls update${c_e}"
   e_long_options="${c_norm_prob}failed to set global long options${c_e}"
 
   if gls_installation_exists; then 
-    err_msg "$e_installed\n\t$cannot_m\n\t$run_r_m\n\t$run_b_m"
+    warn_msg "$e_installed\n\t$cannot_m\n\t$run_r_m\n\t$run_b_m"
     abort_msg
     return 1; 
   fi
@@ -231,7 +231,9 @@ init() {
 # Description:
 # DESCRIPTION GOES HERE
 install() {
-  local target_ver_txt fin_msg1 fin_msg1b
+  local e_fail_prefix target_ver_txt fin_msg1 fin_msg1b
+
+  e_fail_prefix="${c_norm_prob}install() internal error: Failed to"
 
   # Download release data
   if ! download_release_json "$release_json"; then abort_msg && return 1; fi
@@ -255,7 +257,9 @@ install() {
   fi
 
   # Set directives, download/extract latest release and execute directives
-  #if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
+  if ! set_directives --only-recommend-backup; then
+    err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
+  fi
   if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
   #if ! execute_directives; then abort_msg && return 1; fi
 
