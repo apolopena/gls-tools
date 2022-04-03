@@ -101,7 +101,7 @@ ___is_element() {
 
 ### set_directives ###
 # Description:
-# Downloads and parses a valid manifest ($1) into global directive arrays 
+# Downloads and parses a valid manifest (to $1) into global directive arrays 
 # If $1 is not passed in then the global $tmp_dir will be used if it is a valid directory
 # $1 or $tmp_dir should be the temporary working direcotry for an update, install or uninstall
 # If $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
