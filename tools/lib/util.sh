@@ -156,3 +156,19 @@ failed_copy_to_root_msg() {
   esac
   echo -e "$msg"
 }
+
+### colorudiff ###
+# Description:
+# Completely colorizes a unified diff
+# Either pipe in or pass in the output of a unified diff
+#
+# Usage:
+# # Pipe in
+# diff -ur --minimal file1.txt file2.txt | colorudiff
+# # Call traditionally
+# output="$(diff -ur --minimal file1.txt file2.txt)"
+# colorudiff("$output")
+colorudiff() {
+  echo "${1:-$(</dev/stdin)}" \
+  | sed 's/^[^-+@]/\x1b[38;5;34m&/;s/^-/\x1b[48;5;106m-/;s/^+/\x1b[42m+/;s/^@/\x1b[48;5;172m@/;s/$/\x1b[0m/'
+}
