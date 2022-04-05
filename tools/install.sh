@@ -261,7 +261,7 @@ install() {
     err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
   fi
   if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
-  #if ! execute_directives; then abort_msg && return 1; fi
+  if ! execute_directives; then abort_msg && return 1; fi
 
   # TODO: MAIN LOGIC GOES HERE
 
@@ -336,6 +336,8 @@ main() {
   global_supported_options=(
     --help
     --load-deps-locally
+    --no-colors
+    --prompt-diffs
     --strict
   )
 

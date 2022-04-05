@@ -344,9 +344,8 @@ main() {
   global_supported_options=(
     --help
     --load-deps-locally
-    --move-meta-files
-    --force
     --no-colors
+    --prompt-diffs
     --strict
   )
 
