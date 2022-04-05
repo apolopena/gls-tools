@@ -358,7 +358,7 @@ update() {
   
   update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
   update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
-  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm}...\n${c_e}"
+  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm} ...\n${c_e}"
 
   # Set directives, download/extract latest release and execute directives
   if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
@@ -482,6 +482,7 @@ main() {
     --help
     --load-deps-locally
     --no-colors
+    --prompt-diffs
     --strict
   )
 
