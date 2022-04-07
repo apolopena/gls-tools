@@ -72,6 +72,92 @@ help() {
   echo -e "update-gls command line tool\n\t help TBD GOES HERE"
 }
 
+### load_get_deps ###
+# Description:
+# Downloads and sources dependencies $@ in parallel
+# using the base url: https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/
+load_get_deps() {
+  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
+
+  if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
+    err_msg "failed to load the loader from:\n\t$get_deps_url" && exit 1
+  fi
+  source <(curl -fsSL "$get_deps_url" &)
+  ec=$?;
+  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
+}
+
+### load_get_deps_locally ###
+# Description:
+# Sources dependencies $@ from the local file system relative to tools/lib
+load_get_deps_locally() {
+  local this_script_dir
+
+  this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
+  if ! source "$this_script_dir/lib/get-deps.sh"; then
+    echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
+    exit 1
+  fi
+}
+
+### validate_long_options ###
+# Description:
+# Checks 'set' long options against the global_supported_options array
+#
+# Returns 0 if all 'set' long options are in the global_supported_options array
+# Return 1 if a 'set' long option is not in the global_supported_options array
+# Returns 1 if the list_long_options function is not sourced
+#
+# Note:
+# This function relies on lib/long-option.sh and the global variable global_supported_options
+# For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
+validate_long_options() {
+  local failed options;
+
+  if ! declare -f "list_long_options" > /dev/null; then
+    echo -e "${c_norm_prob}failed to validate options: list_long_options() does not exist${c_e}"
+    return 1
+  fi
+
+  options="$(list_long_options)"
+
+  for option in $options; do
+    option=" ${option} "
+    if [[ ! " ${global_supported_options[*]} " =~ $option ]]; then
+        echo -e "${c_norm_prob}unsupported long option: ${c_pass}$option${c_e}"
+        failed=1
+    fi
+  done
+
+  [[ -n $failed ]] && return 1 || return 0
+}
+
+### validate_arguments ###
+# Description:
+# Validate the scripts arguments
+#
+# Note:
+# Commands and short options are illegal. This functions handles them quick and dirty
+validate_arguments() {
+  local e_bad_opt e_bad_short_opt e_command
+
+  e_command="${c_norm_prob}unsupported Command:${c_e}"
+  e_bad_short_opt="${c_norm_prob}illegal short option:${c_e}"
+  e_bad_opt="${c_norm_prob}illegal option:${c_e}"
+
+  for arg in "${script_args[@]}"; do
+    # Regex: Short options are a single dash or start with a single dash but not a double dash
+    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
+
+    # Regex: Commands do not start with a dash
+    [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
+
+    # A bare double dash is also an illegal option
+    [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+  done
+  return 0
+}
+
 ### set_base_version_unknown ###
 # Description:
 # Sets the base version to the string: unknown
@@ -161,92 +247,6 @@ set_target_version() {
   fi
 
   target_dir="$tmp_dir/$target_version"
-}
-
-### load_get_deps ###
-# Description:
-# Downloads and sources dependencies $@ in parallel
-# using the base url: https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/
-load_get_deps() {
-  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
-
-  if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
-    err_msg "failed to load the loader from:\n\t$get_deps_url" && exit 1
-  fi
-  source <(curl -fsSL "$get_deps_url" &)
-  ec=$?;
-  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
-}
-
-### load_get_deps_locally ###
-# Description:
-# Sources dependencies $@ from the local file system relative to tools/lib
-load_get_deps_locally() {
-  local this_script_dir
-
-  this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
-  if ! source "$this_script_dir/lib/get-deps.sh"; then
-    echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
-    exit 1
-  fi
-}
-
-### validate_long_options ###
-# Description:
-# Checks 'set' long options against the global_supported_options array
-#
-# Returns 0 if all 'set' long options are in the global_supported_options array
-# Return 1 if a 'set' long option is not in the global_supported_options array
-# Returns 1 if the list_long_options function is not sourced
-#
-# Note:
-# This function relies on lib/long-option.sh and the global variable global_supported_options
-# For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
-validate_long_options() {
-  local failed options;
-
-  if ! declare -f "list_long_options" > /dev/null; then
-    echo -e "${c_norm_prob}failed to validate options: list_long_options() does not exist${c_e}"
-    return 1
-  fi
-
-  options="$(list_long_options)"
-
-  for option in $options; do
-    option=" ${option} "
-    if [[ ! " ${global_supported_options[*]} " =~ $option ]]; then
-        echo -e "${c_norm_prob}unsupported long option: ${c_pass}$option${c_e}"
-        failed=1
-    fi
-  done
-
-  [[ -n $failed ]] && return 1 || return 0
-}
-
-### validate_arguments ###
-# Description:
-# Validate the scripts arguments
-#
-# Note:
-# Commands and short options are illegal. This functions handles them quick and dirty
-validate_arguments() {
-  local e_bad_opt e_bad_short_opt e_command
-
-  e_command="${c_norm_prob}unsupported Command:${c_e}"
-  e_bad_short_opt="${c_norm_prob}illegal short option:${c_e}"
-  e_bad_opt="${c_norm_prob}illegal option:${c_e}"
-
-  for arg in "${script_args[@]}"; do
-    # Regex: Short options are a single dash or start with a single dash but not a double dash
-    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
-
-    # Regex: Commands do not start with a dash
-    [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
-
-    # A bare double dash is also an illegal option
-    [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
-  done
-  return 0
 }
 
 ### load_deps_locally_option_looks_mispelled ###
