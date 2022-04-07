@@ -668,12 +668,15 @@ ___backup() {
   fi
 
   msg="$b_msg1\n${c_uri}$orig_loc\n$b_msg2$b_msg2b\n$b_msg2c"
+
   echo -e "${c_file}${decor}${decor}${c_e}"
   echo -e "$msg"
+
   if [[ $has_long_option_exists -eq 0 && $(has_long_option --prompt-diffs; echo $?) == 0 ]]; then
     [[ ! -d $target_dir ]] && _directives_err_msg "$e_cant_diff" && return 1
     ___prompt_diff "$orig_loc" "$target_dir/$(basename "$orig_loc")"
   fi
+  
   while true; do
     read -rp "$( echo -e "$question\e[s\n$warn1 $warn1b\e[u\e[1A")" input
     case $input in
