@@ -361,9 +361,13 @@ update() {
   echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm} ...\n${c_e}"
 
   # Set directives, download/extract latest release and execute directives
-  if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
-  if ! install_latest_tarball "$release_json"; then abort_msg && return 1; fi
-  if ! execute_directives; then abort_msg && return 1; fi
+  if has_long_option --force; then
+      if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+  else 
+    if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
+    if ! install_latest_tarball "$release_json"; then abort_msg && return 1; fi
+    if ! execute_directives; then abort_msg && return 1; fi
+  fi
 
   # BEGIN: Update by deleting the old (orig) and coping over the new (target)
   # Latest files to copy from target (latest) to orig (current)
@@ -480,6 +484,7 @@ main() {
   script_args=("$@");
   global_supported_options=(
     --help
+    --force
     --load-deps-locally
     --no-colors
     --prompt-diffs
