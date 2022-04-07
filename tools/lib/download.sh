@@ -22,17 +22,26 @@ c_e=; c_norm=; c_norm_prob=; c_fail=; c_file_name=; c_url=; c_uri=; c_file=;
 ### download_release_json ###
 # Description:
 # Downloads the latest gitpod-laravel-starter release json data from github to a file ($1)
+# Optionally suppress all output if the calling script uses lib/long-option.sh and --quiet has been set
 download_release_json() {
   local url="https://api.github.com/repos/apolopena/gitpod-laravel-starter/releases/latest"
   local err_pre="${c_file_name}lib/download.sh download_release_json() ${c_fail}error:${c_e}${c_norm_prob}"
   local msg="${c_norm}Downloading release data from:\n\t${c_url}$url${c_e}"
+  local has_long_option_exists spinner_task_exists mode
 
   [[ -z $1 ]] && echo -e "$err_pre missing required file argument" && return 1
 
-  if declare -f "spinner_task" > /dev/null; then
+  spinner_task_exists="$(declare -f "spinner_task" > /dev/null)"
+  has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
+  
+  if [[ $has_long_option_exists -eq 0 && $(has_long_option --quiet; echo $?) == 0 ]]; then
+    mode='quiet'
+  fi
+  
+  if [[ $spinner_task_exists -eq 0 && $mode != 'quiet' ]]; then
     spinner_task "$msg" 'curl' --silent "$url" -o "$1" && echo
   else
-    echo -e "$msg"
+    [[ $mode != 'quiet' ]] && echo -e "$msg"
     if ! curl --silent "$url" -o "$1"; then
       echo -e "$err_pre failed to curl from\n\t${c_url}$url${c_norm_prob}\nto\n\t${c_uri}$1${c_e}"
       return 1
