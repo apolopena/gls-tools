@@ -302,7 +302,7 @@ init() {
   if ! validate_arguments; then abort_msg && return 1; fi
   
   # Success. It is now safe to call update()
-  gls_header 'updater'
+  if ! has_long_option --quiet; then gls_header 'updater'; fi
 }
 
 ### update ###
@@ -355,14 +355,16 @@ update() {
     err_msg "$e1\n\t$e2$e2b" && abort_msg && return 1
   fi
 
-  
   update_msg1="${c_norm_b}Updating gitpod-laravel-starter version${c_e}"
   update_msg2="$base_ver_txt ${c_norm_b}to version ${c_e}$target_ver_txt"
-  echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm} ...\n${c_e}"
+
+  if ! has_long_option --quiet; then
+    echo -e "${c_s_bold}$update_msg1 $update_msg2${c_norm} ...\n${c_e}";
+  fi
 
   # Set directives, download/extract latest release and execute directives
   if has_long_option --force; then
-      if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+      if ! install_latest_tarball "$release_json"; then abort_msg && return 1; fi
   else 
     if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
     if ! install_latest_tarball "$release_json"; then abort_msg && return 1; fi
@@ -418,9 +420,12 @@ update() {
   # END: Update by deleting the old (orig) and coping over the new (target)
   
   # Success
-  gls_header success
-  echo -e "$fin_msg1 $fin_msg1b"
-  return 0
+  if ! has_long_option --quiet; then 
+    gls_header success
+    echo -e "$fin_msg1 $fin_msg1b"
+  else
+    echo -e "$fin_msg1 $fin_msg1b"
+  fi
 }
 
 ### cleanup ###
@@ -485,6 +490,7 @@ main() {
   global_supported_options=(
     --help
     --force
+    --quiet
     --load-deps-locally
     --no-colors
     --prompt-diffs
