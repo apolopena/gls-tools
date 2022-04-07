@@ -259,14 +259,14 @@ install() {
   fi
 
   # Set directives, download/extract latest release and execute directives
-  if ! has_long_option --force; then
+  if has_long_option --force; then
+      if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+  else
     if ! set_directives --only-recommend-backup; then
       err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
     fi
     if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
     if ! execute_directives; then abort_msg && return 1; fi
-  else
-    if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
   fi
 
   # Purge originals first to ensure nothing old remains since we are using cp instead of rsync
