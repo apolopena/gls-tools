@@ -364,7 +364,7 @@ main() {
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
   # Initialize, update and cleanup
-  if ! init; then exit 1; fi
+  if ! init; then cleanup; exit 1; fi
   if ! REPLACE_WITH_SCRIPT_NAME; then cleanup; exit 1; fi
   cleanup
 }

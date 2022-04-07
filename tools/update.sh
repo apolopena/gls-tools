@@ -489,11 +489,14 @@ main() {
   # Process the --help directive first since it requires no dependencies to do so
   [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
 
+  # Validate the options before lib/long-options.sh is loaded just in case there is a typo
+
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
     possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
+    [[ ]]
     load_get_deps
   fi
 
@@ -501,7 +504,7 @@ main() {
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
   # Initialize, update and cleanup
-  if ! init; then exit 1; fi
+  if ! init; then cleanup; exit 1; fi
   if ! update; then cleanup; exit 1; fi
   cleanup
 }
