@@ -476,6 +476,35 @@ cleanup() {
   done 
 }
 
+### init_script_args ###
+# Description:
+# One-time function
+# Converts any supported short options ($1) to long options and 
+# appends them to the global $script_args array
+# Returns 0 on success
+# Returns 1 on failure or if the function is called more than once
+init_script_args() {
+  local OPTIND opt lock='@@@@@@@INITIALIZED@@@@@@@'
+  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$lock"; then
+    echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
+    return 1
+  fi
+  # Append $script_args long option equivalants of short option as defined in global_supported_options
+  while getopts ":flnpqs" opt; do
+    case $opt in
+      f) script_args+=( --force ) ;;
+      l) script_args+=( --load-deps-locally );;
+      n) script_args+=( --no-colors ) ;;
+      p) script_args+=( --prompt-diffs ) ;;
+      q) script_args+=( --quiet ) ;;
+      s) script_args+=( --strict) ;;
+      \?) echo "illegal option: -$OPTARG"; exit 1
+    esac
+  done
+  shift $((OPTIND - 1 ))
+  script_args+=("$lock")
+}
+
 ### main ###
 # Description:
 # Main routine
@@ -508,7 +537,7 @@ main() {
   # Process the --help directive first since it requires no dependencies at all
   [[ " $* " =~ " --help " ]] && help && exit 1
 
-  # Set globals never touch them again outside main()
+  # Set globally supported long options
   global_supported_options=(
     --force
     --help
@@ -518,6 +547,8 @@ main() {
     --quiet
     --strict
   )
+  
+  # Convert short options to long options and set the global $script_args array
   for arg in "$@"; do
     [[ $arg =~ ^-[^\--].* ]] && short_options+=("$arg")
   done
@@ -540,30 +571,6 @@ main() {
   if ! init; then cleanup; exit 1; fi
   if ! update; then cleanup; exit 1; fi
   cleanup
-}
-
-init_script_args() {
-  local OPTIND opt lock='@@@@@@@INITIALIZED@@@@@@@'
-
-  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$lock"; then
-    echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
-    return 1
-  fi
-  
-  # Append $script_args long option equivalants of short option as defined in global_supported_options
-  while getopts ":flnpqs" opt; do
-    case $opt in
-      f) script_args+=( --force ) ;;
-      l) script_args+=( --load-deps-locally );;
-      n) script_args+=( --no-colors ) ;;
-      p) script_args+=( --prompt-diffs ) ;;
-      q) script_args+=( --quiet ) ;;
-      s) script_args+=( --strict) ;;
-      \?) echo "illegal option: -$OPTARG"; exit 1
-    esac
-  done
-  shift $((OPTIND - 1 ))
-  script_args+=("$lock")
 }
 # END: functions
 
