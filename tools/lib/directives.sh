@@ -76,7 +76,7 @@ starter.ini
 # Description:
 # Internal function that returns 0 if ($2) is a subpath of ($1), returns 1 otherwise
 ___is_subpath() {
-  if [[ $(realpath --relative-base="$1" -- "$2")  =~ ^/ ]]; then
+  if [[ $(realpath --relative-base="$1" -- "$2" 2>/dev/null)  =~ ^/ ]]; then
     return 1
   else
     return 0
