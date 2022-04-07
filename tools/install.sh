@@ -369,13 +369,13 @@ main() {
     script_args=("$@" "--prompt-diffs");
   fi
   global_supported_options=(
-    --help
-    --quiet
     --force
+    --help
     --load-deps-locally
     --no-colors
-    --skip-diff-prompts
     --prompt-diffs
+    --quiet
+    --skip-diff-prompts
     --strict
   )
 

@@ -509,12 +509,12 @@ main() {
   # Set globals once and never touch them again
   script_args=("$@");
   global_supported_options=(
-    --help
     --force
-    --quiet
+    --help
     --load-deps-locally
     --no-colors
     --prompt-diffs
+    --quiet
     --strict
   )
 
