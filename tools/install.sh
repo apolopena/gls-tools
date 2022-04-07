@@ -259,11 +259,15 @@ install() {
   fi
 
   # Set directives, download/extract latest release and execute directives
-  if ! set_directives --only-recommend-backup; then
-    err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
+  if ! has_long_option --force; then
+    if ! set_directives --only-recommend-backup; then
+      err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
+    fi
+    if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+    if ! execute_directives; then abort_msg && return 1; fi
+  else
+    if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
   fi
-  if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
-  if ! execute_directives; then abort_msg && return 1; fi
 
   # Purge originals first to ensure nothing old remains since we are using cp instead of rsync
   if ! rm -rf .gp; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
@@ -368,6 +372,7 @@ main() {
   global_supported_options=(
     --help
     --quiet
+    --force
     --load-deps-locally
     --no-colors
     --skip-diff-prompts
@@ -391,7 +396,7 @@ main() {
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
   # Initialize, update and cleanup
-  if ! init; then exit 1; fi
+  if ! init; then cleanup; exit 1; fi
   if ! install; then cleanup; exit 1; fi
   cleanup
 }
