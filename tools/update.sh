@@ -65,6 +65,13 @@ name() {
   printf '%s' "${c_file_name}update.sh${c_e}"
 }
 
+### help ###
+# Description:
+# Echoes the help text
+help() {
+  echo -e "update-gls command line tool\n\t help TBD GOES HERE"
+}
+
 ### set_base_version_unknown ###
 # Description:
 # Sets the base version to the string: unknown
@@ -242,11 +249,25 @@ validate_arguments() {
   return 0
 }
 
-### help ###
+### load_deps_locally_option_looks_mispelled ###
 # Description:
-# Echoes the help text
-help() {
-  echo -e "update-gls command line tool\n\t help TBD GOES HERE"
+# Searches the global $script_args array for a possible typo in the --load-deps-locally option
+# Returns 1 and outputs a message showing what was matched if a possible typo is found
+# Returns 0 if no typo is found or if the global $script_args array has no elements in it
+# 
+# Usage example:
+# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
+# Note:
+# Be aware that the exit codes for this function are intentionally reversed
+load_deps_locally_option_looks_mispelled() {
+  local script_args_flat
+  [[ ${#script_args[@]} -eq 0 ]] && return 1
+  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
+  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
+    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
+    return 0
+  fi
+  return 1
 }
 
 ### init ###
@@ -500,13 +521,12 @@ main() {
   # Process the --help directive first since it requires no dependencies to do so
   [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
 
-  # Validate the options before lib/long-options.sh is loaded just in case there is a typo
-
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
     possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
+    if load_deps_locally_option_looks_mispelled; then exit 1; fi
     load_get_deps
   fi
 
