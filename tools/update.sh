@@ -496,7 +496,6 @@ main() {
     possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
-    [[ ]]
     load_get_deps
   fi
 
