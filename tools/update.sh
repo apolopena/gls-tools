@@ -517,8 +517,7 @@ init_script_args() {
 #
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script
-# unless the global option --load-deps-locally is used
-# init() and update() cleanup after themselves
+# unless the global option --load-deps-locally is in argv
 main() {
   local dependencies=(
                        'util.sh'
@@ -531,10 +530,9 @@ main() {
                        )
   local possible_option=()
   local short_options=()
-  local abort="update aborted"
-  local ec arg
+  local ec arg abort="aborted"
 
-  # Process the --help directive first since it requires no dependencies at all
+  # Process the --help directive first since it has no dependencies at all
   [[ " $* " =~ " --help " ]] && help && exit 1
 
   # Set globally supported long options
@@ -547,12 +545,16 @@ main() {
     --quiet
     --strict
   )
-  
-  # Convert short options to long options and set the global $script_args array
+
+  # Harvest short options
   for arg in "$@"; do
     [[ $arg =~ ^-[^\--].* ]] && short_options+=("$arg")
   done
+
+  # Set global script args
   script_args=("$@")
+
+  # Append global args one-time the long option counterparts of the short options
   if ! init_script_args "${short_options[@]}"; then echo "$abort"; exit 1; fi
 
   # Load the loader (get-deps.sh)
