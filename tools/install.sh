@@ -224,27 +224,29 @@ init() {
   if ! validate_arguments; then abort_msg && return 1; fi
   
   # Success. It is now safe to call update()
-  gls_header 'installer'
+  if ! has_long_option --quiet; then gls_header 'installer'; fi
 }
 
 ### install ###
 # Description:
-# DESCRIPTION GOES HERE
+# Interactively installs the latest release version of apolopena/gitpod-laravel-starter
 install() {
-  local e_fail_prefix target_ver_txt fin_msg1 fin_msg1b
+  local e_fail_prefix target_ver_txt fin_msg1 fin_msg1b warn_msg1 warn_msg1b
 
   e_fail_prefix="${c_norm_prob}install() internal error: Failed to"
+  warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
+  warn_msg1b="${c_norm_prob}Some old files may remain but should not cause any issues${c_e}"
 
   # Download release data
   if ! download_release_json "$release_json"; then abort_msg && return 1; fi
 
-  # Set target_version
+  # Set target_version including $target_dir
   if ! set_target_version; then abort_msg && return 1; fi
 
   # Set messages
   target_ver_txt="${c_number}v$target_version${c_e}"
   fin_msg1="${c_norm_b}gitpod-laravel-starter ${c_e}$target_ver_txt"
-  fin_msg1b="${c_norm_b}has been installed to:\n\t${c_e}${c_uri}$project_root${c_e}"
+  fin_msg1b="${c_norm_b}has been installed to:\n${c_e}${c_uri}$project_root${c_e}"
 
   # Create target_dir
   [[ ! -d $target_dir ]] && mkdir "$target_dir"
@@ -263,12 +265,22 @@ install() {
   if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
   if ! execute_directives; then abort_msg && return 1; fi
 
-  # TODO: MAIN LOGIC GOES HERE
+  # Purge originals first to ensure nothing old remains since we are using cp instead of rsync
+  if ! rm -rf .gp; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+  if ! rm -rf .vscode; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+  if ! rm -rf .github; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+
+  # Install
+  if ! cp -a "$target_dir/." "$project_root"; then cleanup; exit 1; fi
 
   # Success
-  gls_header success
-  echo -e "$fin_msg1 $fin_msg1b"
-  return 0
+  cleanup
+  if ! has_long_option --quiet; then 
+    gls_header success
+    echo -e "$fin_msg1 $fin_msg1b"
+  else
+    echo -e "$fin_msg1 ${c_norm_b}has been installed${c_e}"
+  fi
 }
 
 ### cleanup ###
@@ -286,21 +298,37 @@ cleanup() {
   e_msg1="${c_norm_prob}cleanup() failed:\n\t${c_uri}$tmp_dir${c_e}"
   e_msg1b="\n\t${c_norm_prob}is not a sub directory of:\n\t${c_uri}$project_root${c_e}"
 
-  # Satisfy shellcheck, remove this once the code block below this one is uncommented
-  echo "$e_msg1" > /dev/null; echo "$e_msg1b" > /dev/null
-
-  # Delete the temporary working directory, comment this out for testing
-  #if is_subpath "$project_root" "$tmp_dir"; then
-  #  [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
-  #else
-  #  warn_msg "${e_msg1}${e_msg1b}" && exit 1
-  #fi
+  if is_subpath "$project_root" "$tmp_dir"; then
+    [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
+  else
+    warn_msg "${e_msg1}${e_msg1b}" && exit 1
+  fi
   
-  # Delete all empty backup directories
   find . -maxdepth 1 -type d -name "GLS_BACKUPS_*" | \
   while read -r dir; do
     [[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -eq 0 ]] && rm -rf "$dir"
   done 
+}
+
+### load_deps_locally_option_looks_mispelled ###
+# Description:
+# Searches the global $script_args array for a possible typo in the --load-deps-locally option
+# Returns 1 and outputs a message showing what was matched if a possible typo is found
+# Returns 0 if no typo is found or if the global $script_args array has no elements in it
+# 
+# Usage example:
+# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
+# Note:
+# Be aware that the exit codes for this function are intentionally reversed
+load_deps_locally_option_looks_mispelled() {
+  local script_args_flat
+  [[ ${#script_args[@]} -eq 0 ]] && return 1
+  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
+  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
+    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
+    return 0
+  fi
+  return 1
 }
 
 ### main ###
@@ -332,11 +360,17 @@ main() {
   local ec
 
   # Set globals once and never touch them again
-  script_args=("$@");
+  if printf '%s\n' "$@" | grep -Fxq -- "--skip-diff-prompts"; then
+    script_args=("$@");
+  else
+    script_args=("$@" "--prompt-diffs");
+  fi
   global_supported_options=(
     --help
+    --quiet
     --load-deps-locally
     --no-colors
+    --skip-diff-prompts
     --prompt-diffs
     --strict
   )
@@ -349,6 +383,7 @@ main() {
     possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
+    if load_deps_locally_option_looks_mispelled; then exit 1; fi
     load_get_deps
   fi
 
