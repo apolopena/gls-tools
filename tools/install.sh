@@ -275,10 +275,9 @@ install() {
   if ! rm -rf .github; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
 
   # Install
-  if ! cp -a "$target_dir/." "$project_root"; then cleanup; exit 1; fi
+  if ! cp -a "$target_dir/." "$project_root"; then return 1; fi
 
   # Success
-  cleanup
   if ! has_long_option --quiet; then 
     gls_header success
     echo -e "$fin_msg1 $fin_msg1b"
