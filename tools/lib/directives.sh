@@ -676,9 +676,9 @@ ___backup() {
     [[ ! -d $target_dir ]] && _directives_err_msg "$e_cant_diff" && return 1
     ___prompt_diff "$orig_loc" "$target_dir/$(basename "$orig_loc")"
   fi
-  
+
   while true; do
-    read -rp "$( echo -e "$question\e[s\n$warn1 $warn1b\e[u\e[1A")" input
+    read -rp "$( echo -e "$question\e[s\n$warn1 $warn1b\e[u\e")" input
     case $input in
       [Yy]* ) if [[ $1 == 'file' ]]; then 
                 cp "$orig_loc" "$target_loc"
