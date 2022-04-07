@@ -145,8 +145,8 @@ install_latest_tarball() {
   # Only do this if the --treat-as-unbuilt option is passed to this function as $2
   if [[ -z $2 ]]; then
     for i in "${!files_to_move[@]}"; do
-    loc="$target_dir/${files_to_move[$i]}"
-    loc2="$target_dir/.gp/${files_to_move[$i]}"
+      loc="$target_dir/${files_to_move[$i]}"
+      loc2="$target_dir/.gp/${files_to_move[$i]}"
       if [[ -f $loc ]]; then
         if ! mv "$loc" "$loc2"; then
           msg="${c_norm_prob}Could not move the file\n\t${c_uri}${loc}${c_e}\n\t${c_norm_prob}to"
