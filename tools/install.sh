@@ -171,6 +171,27 @@ set_target_version() {
   target_dir="$tmp_dir/$target_version"
 }
 
+### load_deps_locally_option_looks_mispelled ###
+# Description:
+# Searches the global $script_args array for a possible typo in the --load-deps-locally option
+# Returns 1 and outputs a message showing what was matched if a possible typo is found
+# Returns 0 if no typo is found or if the global $script_args array has no elements in it
+# 
+# Usage example:
+# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
+# Note:
+# Be aware that the exit codes for this function are intentionally reversed
+load_deps_locally_option_looks_mispelled() {
+  local script_args_flat
+  [[ ${#script_args[@]} -eq 0 ]] && return 1
+  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
+  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
+    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
+    return 0
+  fi
+  return 1
+}
+
 ### init ###
 # Description:
 # Enables colors, validates all arguments passed to this script,
@@ -311,27 +332,6 @@ cleanup() {
   while read -r dir; do
     [[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -eq 0 ]] && rm -rf "$dir"
   done 
-}
-
-### load_deps_locally_option_looks_mispelled ###
-# Description:
-# Searches the global $script_args array for a possible typo in the --load-deps-locally option
-# Returns 1 and outputs a message showing what was matched if a possible typo is found
-# Returns 0 if no typo is found or if the global $script_args array has no elements in it
-# 
-# Usage example:
-# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
-# Note:
-# Be aware that the exit codes for this function are intentionally reversed
-load_deps_locally_option_looks_mispelled() {
-  local script_args_flat
-  [[ ${#script_args[@]} -eq 0 ]] && return 1
-  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
-  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
-    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
-    return 0
-  fi
-  return 1
 }
 
 ### main ###
