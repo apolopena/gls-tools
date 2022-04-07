@@ -137,23 +137,21 @@ validate_long_options() {
 # Validate the scripts arguments
 #
 # Note:
-# Commands and short options are illegal. This functions handles them quick and dirty
+# Commands and a bare double dash are illegal. This functions handles them quick and dirty
+# @@@@@@@INITIALIZED@@@@@@@ is a lock flag set one-time in 
 validate_arguments() {
-  local e_bad_opt e_bad_short_opt e_command
+  local e_bad_opt e_command
 
   e_command="${c_norm_prob}unsupported Command:${c_e}"
-  e_bad_short_opt="${c_norm_prob}illegal short option:${c_e}"
   e_bad_opt="${c_norm_prob}illegal option:${c_e}"
 
   for arg in "${script_args[@]}"; do
-    # Regex: Short options are a single dash or start with a single dash but not a double dash
-    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
-
-    # Regex: Commands do not start with a dash
-    [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
-
-    # A bare double dash is also an illegal option
-    [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+    if [[ $arg != '@@@@@@@INITIALIZED@@@@@@@' ]]; then
+      # Regex: Commands do not start with a dash
+      [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
+      # A bare double dash is also an illegal option
+      [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+    fi
   done
   return 0
 }
@@ -502,12 +500,15 @@ main() {
                        'directives.sh'
                        'download.sh'
                        )
-  local possible_option=() 
+  local possible_option=()
+  local short_options=()
   local abort="update aborted"
-  local ec
+  local ec arg
 
-  # Set globals once and never touch them again
-  script_args=("$@");
+  # Process the --help directive first since it requires no dependencies at all
+  [[ " $* " =~ " --help " ]] && help && exit 1
+
+  # Set globals never touch them again outside main()
   global_supported_options=(
     --force
     --help
@@ -517,9 +518,11 @@ main() {
     --quiet
     --strict
   )
-
-  # Process the --help directive first since it requires no dependencies to do so
-  [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
+  for arg in "$@"; do
+    [[ $arg =~ ^-[^\--].* ]] && short_options+=("$arg")
+  done
+  script_args=("$@")
+  if ! init_script_args "${short_options[@]}"; then echo "$abort"; exit 1; fi
 
   # Load the loader (get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
@@ -537,6 +540,30 @@ main() {
   if ! init; then cleanup; exit 1; fi
   if ! update; then cleanup; exit 1; fi
   cleanup
+}
+
+init_script_args() {
+  local OPTIND opt lock='@@@@@@@INITIALIZED@@@@@@@'
+
+  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$lock"; then
+    echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
+    return 1
+  fi
+  
+  # Append $script_args long option equivalants of short option as defined in global_supported_options
+  while getopts ":flnpqs" opt; do
+    case $opt in
+      f) script_args+=( --force ) ;;
+      l) script_args+=( --load-deps-locally );;
+      n) script_args+=( --no-colors ) ;;
+      p) script_args+=( --prompt-diffs ) ;;
+      q) script_args+=( --quiet ) ;;
+      s) script_args+=( --strict) ;;
+      \?) echo "illegal option: -$OPTARG"; exit 1
+    esac
+  done
+  shift $((OPTIND - 1 ))
+  script_args+=("$lock")
 }
 # END: functions
 
