@@ -166,7 +166,7 @@ validate_long_options() {
 # Commands and bare double dashes are illegal. This functions handles them quick and dirty
 # @@@@@@@INITIALIZED@@@@@@@ is a lock flag set one-time in init_script_args()
 validate_arguments() {
-  local e_bad_opt e_command
+  local arg e_bad_opt e_command
 
   e_command="${c_norm_prob}unsupported Command:${c_e}"
   e_bad_opt="${c_norm_prob}illegal option:${c_e}"
@@ -525,7 +525,7 @@ init_script_args() {
       p) script_args+=( --prompt-diffs ) ;;
       q) script_args+=( --quiet ) ;;
       S) script_args+=( --strict) ;;
-      \?) echo "illegal option: -$OPTARG"; exit 1
+      \?) echo "illegal option: -$OPTARG"; exit 1 ;;
     esac
   done
   shift $((OPTIND - 1 ))
