@@ -23,15 +23,8 @@
 # 3. Recursively copy the tools directory to the same location where this script was copied to in step 1
 # 4. Rename the tools directory to .gls-tools
 
-tools_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/tools
-
-supported_command() {
-  local supported=('install' 'uninstall' 'update' 'list-options')
-  printf '%s\n' "${supported[@]}" | grep -Fxq -- "$1"
-}
-
 gls_version() {
-  echo "0.0.4"
+  echo "0.0.5"
 }
 
 gls_help() {
@@ -41,11 +34,14 @@ gls_help() {
   echo -e "\tgls list-options <command>"
   echo -e "\tgls [--help | --version]"
   echo
+  echo -e "Example:"
+  echo -e "\tgls update --help"
+  echo
   echo -e "Commands:"
-  echo -e "\tinstall       Installs gitpod-laravel-starter"
+  echo -e "\tinstall       Installs the latest release of gitpod-laravel-starter"
   echo -e "\tuninstall     Uninstalls gitpod-laravel-starter"
-  echo -e "\tupdate        Updates an existing installation of gitpod-laravel-starter"
-  echo -e "\tlist-options  List options for a command"
+  echo -e "\tupdate        Updates an existing installation of 
+                           gitpod-laravel-starter to the latest release"
   echo
   echo -e "Options:"
   echo -e "\t--help        Output this help message and exit"
@@ -60,20 +56,6 @@ gls_uninstall() {
   echo "The uninstall command has not yet been implemented"
 }
 
-list_command_options() {
-  [[ -z $1 ]] && echo "list-options requires an argument" && exit 1
-  if ! supported_command "$1"; then echo "Cannot list options for unsupported command: $1" && exit 1; fi
-
-   case $1 in
-    'install'     )     echo "list-options for the 'install' command has not yet been implmented" ;;
-    'uninstall'   )     echo "list-options for the 'uninstall' command has not yet been implmented" ;;
-    'update'      )     bash "$tools_dir/update.sh" --help ;;
-    'list-options')     echo "list-options has no options" ;;
-                 *)     echo "list_command_options() internal error"; exit ;;
-  esac 
-
-}
-
 gls_update() {
   shift
   # TODO: detect if $@ contains --load-deps-locally and remove it since it would be redundant and cause errors
@@ -81,19 +63,34 @@ gls_update() {
 }
 
 main() {
+  local cmd tools_dir arg args tmp_args=()
+
   [[ -z $1 ]] && gls_help && exit;
   [[ $1 == --help ]] && gls_help && exit
   [[ $1 == --version ]] && gls_version && exit
-  [[ $1 =~ ^- ]] && echo "Unsupported option $1" && exit
+  [[ $1 =~ ^- ]] && echo "unsupported option $1" && exit
 
-  if ! supported_command "$1"; then echo "Unsupported command: $1" && exit; fi
-
-  case $1 in
-    'install'     )     gls_install "$@"; exit ;;
-    'uninstall'   )     gls_uninstall "$@"; exit ;;
-    'update'      )     gls_update "$@"; exit ;;
-    'list-options')     list_command_options "$2"; exit ;;
-                 *)     echo "internal error"; exit ;;
+  tools_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/tools
+  args=("$@")
+  cmd="$1"
+  
+  # Filter out arguments out that should not be passed to child scripts
+  for arg in "${args[@]}"; do 
+    case $arg in
+      'install'                                      );;
+      'uninstall'                                    );;
+      'update'                                       );;
+      '--load-deps-locally' | '-load-deps-locally'   );;
+                                                    *) tmp_args+=("$arg");;
+    esac
+  done
+  args=("${tmp_args[@]}"); unset tmp_args
+echo "${args[*]}"
+  case $cmd in
+    'install'     )     bash "$tools_dir/install.sh" --load-deps-locally "${args[@]}"; exit ;;
+    'uninstall'   )     "$1 is not yet implemented"; exit ;;
+    'update'      )     bash "$tools_dir/update.sh" --load-deps-locally "${args[@]}"; exit ;;
+                 *)     echo "not a valid command: $1"; exit ;;
   esac
 }
 
