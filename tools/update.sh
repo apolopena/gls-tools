@@ -11,8 +11,9 @@
 #
 # Notes:
 # Supports gitpod-laraver starter versions >= v1.0.0
-# Update is interactive. Interactivity can be skipped by piping yes | or yes n | into this script 
-# or by using the -f or --force option. Do so at your own risk.
+# Update is interactive when it needs to be
+# Interactivity can be skipped by piping yes | or yes n | into this script 
+# or by using the -f or --force option. Do so at your own risk
 # For specifics on what files are kept and recommended to be backed up, see the .latest_gls_manifest @
 # https://github.com/apolopena/gls-tools/blob/main/.latest_gls_manifest
 

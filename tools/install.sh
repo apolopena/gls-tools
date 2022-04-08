@@ -8,6 +8,13 @@
 #
 # Description:
 # Installs the latest release version of apolopena/gitpod-laravel-starter
+#
+# Notes:
+# Install is interactive when it needs to be
+# Interactivity can be skipped by piping yes | or yes n | into this script 
+# or by using the -f or --force option. Do so at your own risk
+# For specifics on what files are kept and recommended to be backed up, see the .latest_gls_manifest @
+# https://github.com/apolopena/gls-tools/blob/main/.latest_gls_manifest
 
 
 # BEGIN: Globals
@@ -58,13 +65,6 @@ Written by Apolo Pena; see
 <https://github.com/apolopena/gls-tools/graphs/contributors>"
 }
 
-### name ###
-# Description:
-# Prints the file name of this script. Hardcoded so it works with process substitution
-name() {
-  printf '%s' "${c_file_name}install.sh${c_e}"
-}
-
 ### help ###
 # Description:
 # Outputs help text
@@ -83,6 +83,13 @@ Example: install -s
 -s, --skip-diff-prompts     skip prompts to show differences before overwriting
 -S, --strict                show additional warnings
 -V, --version               output version information and exit"
+}
+
+### name ###
+# Description:
+# Prints the file name of this script. Hardcoded so it works with process substitution
+name() {
+  printf '%s' "${c_file_name}install.sh${c_e}"
 }
 
 ### load_get_deps ###
