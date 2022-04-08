@@ -43,6 +43,21 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 
 # BEGIN: functions
 
+### version ###
+# Description:
+# Outputs this scripts version information
+# See https://github.com/apolopena/gls-tools/releases
+version() {
+  echo "install is a tool from the gls-tools suite v0.0.5
+Copyright © 2022 Apolo Pena
+License MIT <https://spdx.org/licenses/MIT.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Apolo Pena; see
+<https://github.com/apolopena/gls-tools/graphs/contributors>"
+}
+
 ### name ###
 # Description:
 # Prints the file name of this script. Hardcoded so it works with process substitution
@@ -54,7 +69,20 @@ name() {
 # Description:
 # Outputs help text
 help() {
-  :
+  echo -e "Usage: install [-option | --option]...
+Install the latest version of apolopena/gitpod-laravel-starter
+Example: install -s
+
+-F, --force                 force overwrite all files and skip all interactivity
+    --help                  display this help and exit
+-l, --load-deps-locally     load tool dependencies from the local filesystem 
+-n, --no-colors             omit colors from terminal output
+-p, --prompt-diffs          prompt to show differences before overwriting
+                              this option is set by default
+-q, --quiet                 reduce output messages
+-s, --skip-diff-prompts     skip prompts to show differences before overwriting
+-S, --strict                show additional warnings
+-V, --version               output version information and exit"
 }
 
 ### load_get_deps ###
@@ -349,14 +377,15 @@ init_script_args() {
     echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
     return 1
   fi
-  while getopts ":Flnpqs" opt; do
+  while getopts ":FlnpqsS" opt; do
     case $opt in
       F) script_args+=( --force ) ;;
       l) script_args+=( --load-deps-locally );;
       n) script_args+=( --no-colors ) ;;
       p) script_args+=( --prompt-diffs ) ;;
       q) script_args+=( --quiet ) ;;
-      s) script_args+=( --strict) ;;
+      s) script_args+=( --skip-diff-prompts) ;;
+      S) script_args+=( --strict) ;;
       \?) echo "illegal option: -$OPTARG"; exit 1
     esac
   done
@@ -402,8 +431,8 @@ main() {
     --strict
   )
 
-  # Process the --help option first since it has no dependencies
   [[ " $* " =~ " --help " ]] && help && exit 1
+  [[  " $* " =~ " --version " || " $* " =~ " -V " ]] && version && exit 1
 
   # Harvest short options from argv
   for arg in "$@"; do
