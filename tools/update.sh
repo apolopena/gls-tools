@@ -11,8 +11,7 @@
 #
 # Notes:
 # Supports gitpod-laraver starter versions >= v1.0.0
-# Update is interactive
-# Interactivity can be skipped by piping yes | or yes n | into this script 
+# Update is interactive. Interactivity can be skipped by piping yes | or yes n | into this script 
 # or by using the -f or --force option. Do so at your own risk.
 # For specifics on what files are kept and recommended to be backed up, see the .latest_gls_manifest @
 # https://github.com/apolopena/gls-tools/blob/main/.latest_gls_manifest
@@ -58,6 +57,21 @@ c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 # BEGIN: functions
 
+### version ###
+# Description:
+# Outputs this scripts version information
+# See https://github.com/apolopena/gls-tools/releases
+version() {
+  echo "update is a tool from the gls-tools suite v0.0.5
+Copyright © 2022 Apolo Pena
+License MIT <https://spdx.org/licenses/MIT.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Apolo Pena; see
+<https://github.com/apolopena/gls-tools/graphs/contributors>"
+}
+
 ### name ###
 # Description:
 # Prints the file name of this script. Hardcoded so it works with process substitution.
@@ -69,7 +83,18 @@ name() {
 # Description:
 # Outputs help text
 help() {
-  echo -e "update-gls command line tool\n\t help TBD GOES HERE"
+  echo -e "Usage: update [-option | --option]...
+Update a project built on apolopena/gitpod-laravel-starter to the latest version
+Example: update --no-colors
+
+-F, --force                 force overwrite all files and skip all interactivity
+    --help                  display this help and exit
+-l, --load-deps-locally     load tool dependencies from the local filesystem 
+-n, --no-colors             omit colors from terminal output
+-p, --prompt-diffs          prompt to show differences when overwriting anything
+-q, --quiet                 reduce output messages
+-s, --strict                show additional warnings
+-V, --version               output version information and exit"
 }
 
 ### load_get_deps ###
@@ -491,9 +516,9 @@ init_script_args() {
     echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
     return 1
   fi
-  while getopts ":flnpqs" opt; do
+  while getopts ":Flnpqs" opt; do
     case $opt in
-      f) script_args+=( --force ) ;;
+      F) script_args+=( --force ) ;;
       l) script_args+=( --load-deps-locally );;
       n) script_args+=( --no-colors ) ;;
       p) script_args+=( --prompt-diffs ) ;;
@@ -542,10 +567,12 @@ main() {
     --prompt-diffs
     --quiet
     --strict
+    --version
   )
 
-  # Process the --help option first since it has no dependencies
   [[ " $* " =~ " --help " ]] && help && exit 1
+  [[  " $* " =~ " --version " || " $* " =~ " -V " ]] && version && exit 1
+  
 
   # Harvest short options from argv
   for arg in "$@"; do
