@@ -349,9 +349,9 @@ init_script_args() {
     echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
     return 1
   fi
-  while getopts ":flnpqs" opt; do
+  while getopts ":Flnpqs" opt; do
     case $opt in
-      f) script_args+=( --force ) ;;
+      F) script_args+=( --force ) ;;
       l) script_args+=( --load-deps-locally );;
       n) script_args+=( --no-colors ) ;;
       p) script_args+=( --prompt-diffs ) ;;
