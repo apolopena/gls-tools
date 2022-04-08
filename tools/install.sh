@@ -45,10 +45,10 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 
 ### version ###
 # Description:
-# Outputs this scripts version information
-# See https://github.com/apolopena/gls-tools/releases
+# Outputs this tools version information
 version() {
-  echo "install is a tool from the gls-tools suite v0.0.5
+  echo "v0.0.5
+install is a gitpod-larvel-starter tool from the gls-tools suite
 Copyright © 2022 Apolo Pena
 License MIT <https://spdx.org/licenses/MIT.html>
 This is free software: you are free to change and redistribute it.
