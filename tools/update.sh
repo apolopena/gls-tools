@@ -72,13 +72,6 @@ Written by Apolo Pena; see
 <https://github.com/apolopena/gls-tools/graphs/contributors>"
 }
 
-### name ###
-# Description:
-# Prints the file name of this script. Hardcoded so it works with process substitution.
-name() {
-  printf '%s' "${c_file_name}update.sh${c_e}"
-}
-
 ### help ###
 # Description:
 # Outputs help text
@@ -95,6 +88,13 @@ Example: update --no-colors
 -q, --quiet                 reduce output messages
 -S, --strict                show additional warnings
 -V, --version               output version information and exit"
+}
+
+### name ###
+# Description:
+# Prints the file name of this script. Hardcoded so it works with process substitution.
+name() {
+  printf '%s' "${c_file_name}update.sh${c_e}"
 }
 
 ### load_get_deps ###
@@ -573,7 +573,6 @@ main() {
   [[ " $* " =~ " --help " ]] && help && exit 1
   [[  " $* " =~ " --version " || " $* " =~ " -V " ]] && version && exit 1
   
-
   # Harvest short options from argv
   for arg in "$@"; do
     [[ $arg =~ ^-[^\--].* ]] && short_options+=("$arg")
