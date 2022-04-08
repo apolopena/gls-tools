@@ -91,9 +91,9 @@ Example: update --no-colors
     --help                  display this help and exit
 -l, --load-deps-locally     load tool dependencies from the local filesystem 
 -n, --no-colors             omit colors from terminal output
--p, --prompt-diffs          prompt to show differences when overwriting anything
+-p, --prompt-diffs          prompt to show differences before overwriting
 -q, --quiet                 reduce output messages
--s, --strict                show additional warnings
+-S, --strict                show additional warnings
 -V, --version               output version information and exit"
 }
 
@@ -516,14 +516,14 @@ init_script_args() {
     echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
     return 1
   fi
-  while getopts ":Flnpqs" opt; do
+  while getopts ":FlnpqS" opt; do
     case $opt in
       F) script_args+=( --force ) ;;
       l) script_args+=( --load-deps-locally );;
       n) script_args+=( --no-colors ) ;;
       p) script_args+=( --prompt-diffs ) ;;
       q) script_args+=( --quiet ) ;;
-      s) script_args+=( --strict) ;;
+      S) script_args+=( --strict) ;;
       \?) echo "illegal option: -$OPTARG"; exit 1
     esac
   done
