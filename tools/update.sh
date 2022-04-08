@@ -59,10 +59,10 @@ c_file_name=; c_url=; c_uri=; c_number=; c_choice=; c_prompt=;
 
 ### version ###
 # Description:
-# Outputs this scripts version information
-# See https://github.com/apolopena/gls-tools/releases
+# Outputs this tools version information
 version() {
-  echo "update is a tool from the gls-tools suite v0.0.5
+  echo "v0.0.5
+update is a gitpod-larvel-starter tool from the gls-tools suite
 Copyright © 2022 Apolo Pena
 License MIT <https://spdx.org/licenses/MIT.html>
 This is free software: you are free to change and redistribute it.
