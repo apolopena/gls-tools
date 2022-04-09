@@ -52,7 +52,7 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 
 ### version ###
 # Description:
-# Outputs this tools version information
+# Outputs version information
 version() {
   echo "v0.0.5
 install is a gitpod-larvel-starter tool from the gls-tools suite
@@ -122,14 +122,14 @@ load_get_deps_locally() {
 
 ### validate_long_options ###
 # Description:
-# Checks 'set' long options against the global_supported_options array
+# Checks long options that have been set against the global_supported_options array
 #
-# Returns 0 if all 'set' long options are in the global_supported_options array
-# Return 1 if a 'set' long option is not in the global_supported_options array
+# Returns 0 if all long options that have been set are in the $global_supported_options array
+# Return 1 if a long option that has been set is not in the $global_supported_options array
 # Returns 1 if the list_long_options function is not sourced
 #
 # Note:
-# This function relies on lib/long-option.sh and the global variable global_supported_options
+# This function relies on lib/long-option.sh and the global variable $global_supported_options
 # For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
 validate_long_options() {
   local failed options;
@@ -154,10 +154,10 @@ validate_long_options() {
 
 ### validate_arguments ###
 # Description:
-# Validate the scripts arguments
+# Validates the global scripts arguments array
 #
 # Note:
-# Commands and bare double dashes are illegal. This functions handles them quick and dirty
+# Commands and bare double dashes are illegal
 # @@@@@@@INITIALIZED@@@@@@@ is a lock flag set one-time in init_script_args()
 validate_arguments() {
   local arg e_bad_opt e_command
@@ -167,9 +167,9 @@ validate_arguments() {
 
   for arg in "${script_args[@]}"; do
     if [[ $arg != '@@@@@@@INITIALIZED@@@@@@@' ]]; then
-      # Regex: Commands do not start with a dash
+      # Commands do not start with a dash
       [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
-      # A bare double dash is also an illegal option
+      # A bare double dash is illegal
       [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
     fi
   done
@@ -178,9 +178,12 @@ validate_arguments() {
 
 ### set_target_version ###
 # Description:
-# Sets target version and target directory
-# Requires Global:
-# $release_json (a valid github latest release json file)
+# Parses github release data and sets the global variables for target version and target directory
+# Requires the global variable $release_json (a valid github latest release json file)
+# Returns and error exit code in the following situations:
+#   The global $release_json is not a file
+#   The global $release_json file contains a message that the rate limit has been exceeded
+#   The parse for the target version results in an empty string
 set_target_version() {
   local regexp e1 e1b e2 rle
 
@@ -438,6 +441,7 @@ main() {
     --strict
   )
 
+  # Handle options that have no dependencies and should exit when completed
   [[ " $* " =~ " --help " ]] && help && exit 1
   [[  " $* " =~ " --version " || " $* " =~ " -V " ]] && version && exit 1
 
