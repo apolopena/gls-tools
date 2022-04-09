@@ -29,19 +29,19 @@ global_supported_options=()
 # Project root. Never run this script from outside the project root. Set by init()
 project_root=
 
-# Temporary working directory for the update. Set by init()
+# Temporary working directory for the install. Set by init()
 tmp_dir=
 
-# Location for the download of latest version of gls to update the project to. Set by set_target_version()
+# Location for the download of latest version of gls to install the project to. Set by set_target_version()
 target_dir=
 
-# Location for recommended backups. Set by init(). Appended by update().
+# Location for recommended backups. Set by init(). Appended by install().
 backups_dir=
 
 # Latest release data downloaded from github. Set by init()
 release_json=
 
-# The version to update to. Set by init()
+# The version to use for the install. Set by init()
 target_version=
 
 # Satisfy shellcheck by predefining the colors we use from lib/colors.sh
@@ -221,7 +221,7 @@ set_target_version() {
 # Be aware that the exit codes for this function are intentionally reversed
 load_deps_locally_option_looks_mispelled() {
   local script_args_flat
-  
+
   [[ ${#script_args[@]} -eq 0 ]] && return 1
   script_args_flat="$(printf '%s\n' "${script_args[@]}")"
   if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
@@ -241,7 +241,7 @@ load_deps_locally_option_looks_mispelled() {
 # Also returns 1 if an existing installation of gitpod-laravel-starter is not detected
 #
 # Note:
-# This function can only be called once and prior to calling update()
+# This function can only be called once and prior to calling install()
 # Subsequent attempts to call this function will result in an error
 init() {
   local arg gls e_installed e_long_options cannot_m run_r_m
@@ -267,7 +267,7 @@ init() {
   
   # Set globals that other functions will depend on
   project_root="$(pwd)"
-  backups_dir="$project_root"; # Will be mutated intentionally by update()
+  backups_dir="$project_root"; # Will be mutated intentionally by install()
   tmp_dir="$project_root/tmp_gls_update"
   release_json="$tmp_dir/latest_release.json"
 
@@ -283,7 +283,7 @@ init() {
   if ! validate_long_options; then abort_msg && return 1; fi
   if ! validate_arguments; then abort_msg && return 1; fi
   
-  # Success. It is now safe to call update()
+  # Success. It is now safe to call install()
   if ! has_long_option --quiet; then gls_header 'installer'; fi
 }
 
@@ -474,7 +474,7 @@ main() {
   # Use the loaded loader to load the rest of the dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
-  # Initialize, update and finally cleanup
+  # Initialize, install and finally cleanup
   if ! init; then cleanup; exit 1; fi
   if ! install; then cleanup; exit 1; fi
   cleanup
