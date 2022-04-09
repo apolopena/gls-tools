@@ -221,6 +221,7 @@ set_target_version() {
 # Be aware that the exit codes for this function are intentionally reversed
 load_deps_locally_option_looks_mispelled() {
   local script_args_flat
+  
   [[ ${#script_args[@]} -eq 0 ]] && return 1
   script_args_flat="$(printf '%s\n' "${script_args[@]}")"
   if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
