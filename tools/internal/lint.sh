@@ -14,7 +14,6 @@
 # If you run this script outside of Gitpod:
 # To ensure all .sh files in the project are linted, make sure you run this script from the project root
 
-#if command -v rsync > /dev/null; then
 
 path() {
   [[ -z $GITPOD_REPO_ROOT ]] && GITPOD_REPO_ROOT="$(pwd)"
