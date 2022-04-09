@@ -48,20 +48,6 @@ gls_help() {
   echo -e "\t--version     Output version information and exit"
 }
 
-gls_install() {
-  echo "The install command has not yet been implemented"
-}
-
-gls_uninstall() {
-  echo "The uninstall command has not yet been implemented"
-}
-
-gls_update() {
-  shift
-  # TODO: detect if $@ contains --load-deps-locally and remove it since it would be redundant and cause errors
-  bash "$tools_dir/update.sh" --load-deps-locally "$@"
-}
-
 main() {
   local cmd tools_dir arg args tmp_args=()
 
@@ -85,12 +71,12 @@ main() {
     esac
   done
   args=("${tmp_args[@]}"); unset tmp_args
-echo "${args[*]}"
+
   case $cmd in
-    'install'     )     bash "$tools_dir/install.sh" --load-deps-locally "${args[@]}"; exit ;;
-    'uninstall'   )     "$1 is not yet implemented"; exit ;;
-    'update'      )     bash "$tools_dir/update.sh" --load-deps-locally "${args[@]}"; exit ;;
-                 *)     echo "not a valid command: $1"; exit ;;
+    'install'     ) bash "$tools_dir/install.sh" --load-deps-locally "${args[@]}"; exit ;;
+    'uninstall'   ) "$1 is not yet implemented"; exit ;;
+    'update'      ) bash "$tools_dir/update.sh" --load-deps-locally "${args[@]}"; exit ;;
+                 *) echo "not a valid command: $1"; exit ;;
   esac
 }
 
