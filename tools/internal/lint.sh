@@ -39,7 +39,7 @@ main() {
   total=$(script_total)
 
   if [[ $1 == '-V' || $1 == '--verbose' ]]; then
-    echo -e "\e[38;5;76mFound\e[0;36m$total\e[0m \e[38;5;40m scripts relative to $(pwd).\nRunning them through shellcheck now\e[0m"
+    echo -e "\e[38;5;76mFound\e[0;36m $total\e[0m\e[38;5;40m scripts relative to $(pwd).\nRunning them through shellcheck now\e[0m"
     echo -ne "\e[38;5;45m"
     list_all_scripts;  echo -ne "\e[0m"
   fi
