@@ -87,7 +87,8 @@ Example: install -s
 
 ### name ###
 # Description:
-# Prints the file name of this script. Hardcoded so it works with process substitution
+# Prints the file name of this script
+# Hardcoded so it works with process substitution
 name() {
   printf '%s' "${c_file_name}install.sh${c_e}"
 }
