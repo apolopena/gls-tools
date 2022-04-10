@@ -70,7 +70,7 @@ Written by Apolo Pena; see
 help() {
   echo -e "Usage: REPLACE_WITH_SCRIPT_NAME [-option | --option]...
 Install the latest version of apolopena/gitpod-laravel-starter
-Example: install -s
+Example: REPLACE_WITH_SCRIPT_NAME -s
 
 -F, --force                 force overwrite all files and skip all interactivity
     --help                  display this help and exit
