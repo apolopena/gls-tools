@@ -24,7 +24,15 @@
 # 4. Rename the tools directory to .gls-tools
 
 gls_version() {
-  echo "0.0.5"
+  echo "0.0.5
+gls is command line utility that wraps the gls-tools suite
+Copyright © 2022 Apolo Pena
+License MIT <https://spdx.org/licenses/MIT.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Apolo Pena; see
+<https://github.com/apolopena/gls-tools/graphs/contributors>"
 }
 
 gls_help() {
