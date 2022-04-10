@@ -14,7 +14,6 @@
 # If you run this script outside of Gitpod:
 # To ensure all .sh files in the project are linted, make sure you run this script from the project root
 
-#if command -v rsync > /dev/null; then
 
 path() {
   [[ -z $GITPOD_REPO_ROOT ]] && GITPOD_REPO_ROOT="$(pwd)"
@@ -39,7 +38,7 @@ main() {
   total=$(script_total)
 
   if [[ $1 == '-V' || $1 == '--verbose' ]]; then
-    echo -e "\e[38;5;76mFound\e[0;36m$total\e[0m \e[38;5;40m scripts relative to $(pwd).\nRunning them through shellcheck now\e[0m"
+    echo -e "\e[38;5;76mFound\e[0;36m $total\e[0m\e[38;5;40m scripts relative to $(pwd).\nRunning them through shellcheck now\e[0m"
     echo -ne "\e[38;5;45m"
     list_all_scripts;  echo -ne "\e[0m"
   fi

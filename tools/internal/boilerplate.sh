@@ -4,19 +4,20 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# REPLACE_WITH_SCRIPT_NAME (and file extension) BOILERPLATE gls-tools SCRIPT
+# REPLACE_WITH_SCRIPT_NAME.sh
 #
 # Description:
 # DESCRIPTION GOES HERE
 # Boiler plate code for creating a gls-tool script in tools
 # Just make a few replacements in the obvious places to get started
-# The code runs as-is. It will download the latest release version of gitpod laravel starter
+# The code runs as-is and uses the most of the same global long options the other gls-tools use
+# This script will download the latest release version of gitpod laravel starter
 # to tmp_gls_update/x.x.x where x is an integer
-# That directory will be created relative to where this script is run from
+# That tmp_gls_update/x.x.x directory will be created relative to where this script is run from
 
 
 # BEGIN: Globals
-# Never mutate globals them once they are set unless they are a flag
+# Note: Never mutate globals once they are set unless they are a flag/toggle
 
 # The arguments passed to this script. Set from main().
 script_args=()
@@ -27,19 +28,19 @@ global_supported_options=()
 # Project root. Never run this script from outside the project root. Set by init()
 project_root=
 
-# Temporary working directory for the update. Set by init()
+# Temporary working directory for the REPLACE_WITH_SCRIPT_NAME. Set by init()
 tmp_dir=
 
-# Location for the download of latest version of gls to update the project to. Set by set_target_version()
+# Location for the download of latest version of gls to REPLACE_WITH_SCRIPT_NAME the project to. Set by set_target_version()
 target_dir=
 
-# Location for recommended backups. Set by init(). Appended by update().
+# Location for recommended backups. Set by init(). Appended by REPLACE_WITH_SCRIPT_NAME().
 backups_dir=
 
 # Latest release data downloaded from github. Set by init()
 release_json=
 
-# The version to update to. Set by init()
+# The version to REPLACE_WITH_SCRIPT_NAME to. Set by init()
 target_version=
 
 # Satisfy shellcheck by predefining the colors we use from lib/colors.sh
@@ -48,48 +49,71 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 
 # BEGIN: functions
 
-### name ###
+### version ###
 # Description:
-# Prints the file name of this script. Hardcoded so it works with process substitution
-name() {
-  printf '%s' "${c_file_name}boilerplate.sh${c_e}"
+# Outputs version information
+version() {
+  echo "vx.x.x
+REPLACE_WITH_SCRIPT_NAME is a gitpod-larvel-starter tool from the gls-tools suite
+Copyright © 2022 Apolo Pena
+License MIT <https://spdx.org/licenses/MIT.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Apolo Pena; see
+<https://github.com/apolopena/gls-tools/graphs/contributors>"
 }
 
 ### help ###
 # Description:
+# Outputs help text
 help() {
-  echo "help text goes here"
+  echo -e "Usage: REPLACE_WITH_SCRIPT_NAME [-option | --option]...
+Install the latest version of apolopena/gitpod-laravel-starter
+Example: REPLACE_WITH_SCRIPT_NAME -s
+
+-F, --force                 force overwrite all files and skip all interactivity
+    --help                  display this help and exit
+-l, --load-deps-locally     load tool dependencies from the local filesystem 
+-n, --no-colors             omit colors from terminal output
+-p, --prompt-diffs          prompt to show differences before overwriting
+                              this option is set by default
+-q, --quiet                 reduce output messages
+-s, --skip-diff-prompts     skip prompts to show differences before overwriting
+-S, --strict                show additional warnings
+-V, --version               output version information and exit"
+}
+
+### name ###
+# Description:
+# Prints the file name of this script
+# Hardcoded so it works with process substitution
+name() {
+  printf '%s' "${c_file_name}REPLACE_WITH_SCRIPT_NAME.sh${c_e}"
 }
 
 ### load_get_deps ###
 # Description:
-# Downloads and sources dependencies $@ in parallel
-# using the base url: https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/
+# Synchronously downloads and sources the dependency loader library (lib/get-deps.sh) from
+# https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh
 load_get_deps() {
   local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
 
   if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
-    err_msg "failed to load the loader from:\n\t$get_deps_url" && exit 1
+    echo -e "failed to load the loader from:\n\t$get_deps_url" && exit 1
   fi
   source <(curl -fsSL "$get_deps_url" &)
   ec=$?;
-  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:n\t$get_deps_url"; exit 1; fi; wait;
+  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
 }
 
 ### load_get_deps_locally ###
 # Description:
-# Sources dependencies $@ from the local file system relative to tools/lib
+# Sources the dependency loader library (lib/get-deps.sh) from the local filesystem
 load_get_deps_locally() {
   local this_script_dir
 
-  this_script_dir="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
-
-  # Boilerplate Note: The script directory is parsed so that this script actually works as-is 
-  # remove this entire code block once your script lives in tools rather than here in tools/internal
-  # shellcheck disable=SC2001
-  this_script_dir=$(echo "$this_script_dir" | sed 's@/internal@@g')
-
-
+  this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
   if ! source "$this_script_dir/lib/get-deps.sh"; then
     echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
     exit 1
@@ -98,14 +122,14 @@ load_get_deps_locally() {
 
 ### validate_long_options ###
 # Description:
-# Checks 'set' long options against the global_supported_options array
+# Checks long options that have been set against the global_supported_options array
 #
-# Returns 0 if all 'set' long options are in the global_supported_options array
-# Return 1 if a 'set' long option is not in the global_supported_options array
+# Returns 0 if all long options that have been set are in the $global_supported_options array
+# Return 1 if a long option that has been set is not in the $global_supported_options array
 # Returns 1 if the list_long_options function is not sourced
 #
 # Note:
-# This function relies on lib/long-option.sh and the global variable global_supported_options
+# This function relies on lib/long-option.sh and the global variable $global_supported_options
 # For more details see: https://github.com/apolopena/gls-tools/blob/main/tools/lib/long-option.sh
 validate_long_options() {
   local failed options;
@@ -130,35 +154,36 @@ validate_long_options() {
 
 ### validate_arguments ###
 # Description:
-# Validate the scripts arguments
+# Validates the global scripts arguments array
 #
 # Note:
-# Commands and short options are illegal. This functions handles them quick and dirty
+# Commands and bare double dashes are illegal
+# @@@@@@@INITIALIZED@@@@@@@ is a lock flag set one-time in init_script_args()
 validate_arguments() {
-  local e_bad_opt e_bad_short_opt e_command
+  local arg e_bad_opt e_command
 
   e_command="${c_norm_prob}unsupported Command:${c_e}"
-  e_bad_short_opt="${c_norm_prob}illegal short option:${c_e}"
   e_bad_opt="${c_norm_prob}illegal option:${c_e}"
 
   for arg in "${script_args[@]}"; do
-    # Regex: Short options are a single dash or start with a single dash but not a double dash
-    [[ $arg == '-' || $arg =~ ^-[^\--].* ]] && err_msg "$e_bad_short_opt ${c_pass}$arg${c_e}" && return 1
-
-    # Regex: Commands do not start with a dash
-    [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
-
-    # A bare double dash is also an illegal option
-    [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+    if [[ $arg != '@@@@@@@INITIALIZED@@@@@@@' ]]; then
+      # Commands do not start with a dash
+      [[ $arg =~ ^[^\-] ]] && err_msg "$e_command ${c_pass}$arg${c_e}" && return 1
+      # A bare double dash is illegal
+      [[ $arg == '--' ]] && err_msg "$e_bad_opt ${c_pass}$arg${c_e}" && return 1
+    fi
   done
   return 0
 }
 
 ### set_target_version ###
 # Description:
-# Sets target version and target directory
-# Requires Global:
-# $release_json (a valid github latest release json file)
+# Parses github release data and sets the global variables for target version and target directory
+# Requires the global variable $release_json (a valid github latest release json file)
+# Returns and error exit code in the following situations:
+#   The global $release_json is not a file
+#   The global $release_json file contains a message that the rate limit has been exceeded
+#   The parse for the target version results in an empty string
 set_target_version() {
   local regexp e1 e1b e2 rle
 
@@ -182,22 +207,45 @@ set_target_version() {
   target_dir="$tmp_dir/$target_version"
 }
 
+### load_deps_locally_option_looks_mispelled ###
+# Description:
+# Searches the global $script_args array for a possible typo in the --load-deps-locally option
+# Returns 1 and outputs a message showing what was matched if a possible typo is found
+# Returns 0 if no typo is found or if the global $script_args array has no elements in it
+# 
+# Usage example:
+# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
+#
+# Note:
+# Be aware that the exit codes for this function are intentionally reversed
+load_deps_locally_option_looks_mispelled() {
+  local script_args_flat
+  
+  [[ ${#script_args[@]} -eq 0 ]] && return 1
+  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
+  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
+    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
+    return 0
+  fi
+  return 1
+}
+
 ### init ###
 # Description:
-# Enables colors, validates all arguments passed to this script,
-# sets long options and sets any global variables
-# A fancy header is written to stdout if this function succeeds ;)
+# Handles colors, sets and validates all arguments and long options passed to this script
+# Sets long options and sets global variables other functions will depnd on
+# An optional fancy header is written to stdout if this function succeeds
 #
 # Returns 0 if successful, returns 1 if there are any errors
 # Also returns 1 if an existing installation of gitpod-laravel-starter is not detected
 #
 # Note:
-# This function can only be called once and prior to calling update()
+# This function can only be called once and prior to calling REPLACE_WITH_SCRIPT_NAME()
 # Subsequent attempts to call this function will result in an error
 init() {
   local arg gls e_installed e_long_options cannot_m run_r_m
   
-  # Handle color support first
+  # Handle color support first and foremost
   if ! printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--no-colors"; then
    handle_colors
   fi
@@ -211,18 +259,18 @@ init() {
   e_long_options="${c_norm_prob}failed to set global long options${c_e}"
 
   if gls_installation_exists; then 
-    err_msg "$e_installed\n\t$cannot_m\n\t$run_r_m\n\t$run_b_m"
+    warn_msg "$e_installed\n\t$cannot_m\n\t$run_r_m\n\t$run_b_m"
     abort_msg
     return 1; 
   fi
   
   # Set globals that other functions will depend on
   project_root="$(pwd)"
-  backups_dir="$project_root"; # Will be mutated intentionally by update()
+  backups_dir="$project_root"; # Will be mutated intentionally by REPLACE_WITH_SCRIPT_NAME()
   tmp_dir="$project_root/tmp_gls_update"
   release_json="$tmp_dir/latest_release.json"
 
-  # Create a temporary working directory that other functions will depend on
+  # Create the temporary working directory that other functions will depend on
   if ! mkdir -p "$tmp_dir"; then
     err_msg "${c_norm_prob}unable to create required directory ${c_uri}$tmp_dir${c_e}"
     abort_msg
@@ -234,31 +282,38 @@ init() {
   if ! validate_long_options; then abort_msg && return 1; fi
   if ! validate_arguments; then abort_msg && return 1; fi
   
-  # Success. It is now safe to call update()
-  gls_header 'installer'
+  # Success. It is now safe to call REPLACE_WITH_SCRIPT_NAME()
+  if ! has_long_option --quiet; then gls_header 'installer'; fi
 }
 
 ### REPLACE_WITH_SCRIPT_NAME ###
 # Description:
-# DESCRIPTION GOES HERE
+# Description goes here
+#
+# Note:
+# main() and then init() must be called prior to calling this function
 REPLACE_WITH_SCRIPT_NAME() {
-  local target_ver_txt fin_msg1 fin_msg1b
+  local e_fail_prefix target_ver_txt fin_msg1 fin_msg1b warn_msg1 warn_msg1b
+
+  e_fail_prefix="${c_norm_prob}REPLACE_WITH_SCRIPT_NAME() internal error: Failed to"
+  warn_msg1="${c_norm_prob}Could not delete the directory ${c_uri}.gp${c_e}"
+  warn_msg1b="${c_norm_prob}Some old files may remain but should not cause any issues${c_e}"
 
   # Download release data
   if ! download_release_json "$release_json"; then abort_msg && return 1; fi
 
-  # Set target_version
+  # Set target_version including $target_dir
   if ! set_target_version; then abort_msg && return 1; fi
 
   # Set messages
   target_ver_txt="${c_number}v$target_version${c_e}"
   fin_msg1="${c_norm_b}gitpod-laravel-starter ${c_e}$target_ver_txt"
-  fin_msg1b="${c_norm_b}has been PLACEHOLDER TEXT to:\n\t${c_e}${c_uri}$project_root${c_e}"
+  fin_msg1b="${c_norm_b}has been installed to:\n${c_e}${c_uri}$project_root${c_e}"
 
   # Create target_dir
   [[ ! -d $target_dir ]] && mkdir "$target_dir"
 
-  # Create backups_dir, alter this as needed
+  # Create backups_dir
   if [[ $backups_dir == "$project_root" ]]; then
     backups_dir="${backups_dir}/GLS_BACKUPS_project_data"
     [[ -d $backups_dir ]] && rm -rf "$backups_dir"
@@ -266,16 +321,31 @@ REPLACE_WITH_SCRIPT_NAME() {
   fi
 
   # Set directives, download/extract latest release and execute directives
-  #if ! set_directives; then err_msg "$e_fail_prefix set a directive" && abort_msg && return 1; fi
-  if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
-  #if ! execute_directives; then abort_msg && return 1; fi
+  if has_long_option --force; then
+      if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+  else
+    if ! set_directives --only-recommend-backup; then
+      err_msg "$e_fail_prefix set a directive" && abort_msg && return 1
+    fi
+    if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
+    if ! execute_directives; then abort_msg && return 1; fi
+  fi
 
-  # TODO: MAIN LOGIC GOES HERE
+  # Purge originals first to ensure nothing old remains since we are using cp instead of rsync
+  if ! rm -rf .gp; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+  if ! rm -rf .vscode; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+  if ! rm -rf .github; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
+
+  # REPLACE_WITH_SCRIPT_NAME
+  if ! cp -a "$target_dir/." "$project_root"; then return 1; fi
 
   # Success
-  gls_header success
-  echo -e "$fin_msg1 $fin_msg1b"
-  return 0
+  if ! has_long_option --quiet; then 
+    gls_header success
+    echo -e "$fin_msg1 $fin_msg1b"
+  else
+    echo -e "$fin_msg1 ${c_norm_b}has been installed${c_e}"
+  fi
 }
 
 ### cleanup ###
@@ -292,38 +362,61 @@ cleanup() {
 
   e_msg1="${c_norm_prob}cleanup() failed:\n\t${c_uri}$tmp_dir${c_e}"
   e_msg1b="\n\t${c_norm_prob}is not a sub directory of:\n\t${c_uri}$project_root${c_e}"
-  
-  # Satisfy shellcheck, remove this once the code block below this one is uncommented
-  echo "$e_msg1" > /dev/null; echo "$e_msg1b" > /dev/null
 
-  # Delete the temporary working directory, comment this out for testing
-  #if is_subpath "$project_root" "$tmp_dir"; then
-  #  [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
-  #else
-  #  warn_msg "${e_msg1}${e_msg1b}" && exit 1
-  #fi
+  if is_subpath "$project_root" "$tmp_dir"; then
+    [[ -d $tmp_dir ]] && rm -rf "$tmp_dir"
+  else
+    warn_msg "${e_msg1}${e_msg1b}" && exit 1
+  fi
   
-  # Delete all empty backup directories, alter as needed
   find . -maxdepth 1 -type d -name "GLS_BACKUPS_*" | \
   while read -r dir; do
     [[ $(find "$dir" -mindepth 1 -maxdepth 1 | wc -l) -eq 0 ]] && rm -rf "$dir"
   done 
 }
 
+### init_script_args ###
+# Description:
+# One-time function to convert supported short options ($1) to long options and 
+# append them to the global $script_args array
+# Returns 0 on success
+# Returns 1 on failure or if this function is called more than once
+init_script_args() {
+  local OPTIND opt lock='@@@@@@@INITIALIZED@@@@@@@'
+
+  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "$lock"; then
+    echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
+    return 1
+  fi
+  while getopts ":FlnpqsS" opt; do
+    case $opt in
+      F) script_args+=( --force ) ;;
+      l) script_args+=( --load-deps-locally );;
+      n) script_args+=( --no-colors ) ;;
+      p) script_args+=( --prompt-diffs ) ;;
+      q) script_args+=( --quiet ) ;;
+      s) script_args+=( --skip-diff-prompts) ;;
+      S) script_args+=( --strict) ;;
+      \?) echo "illegal option: -$OPTARG"; exit 1 ;;
+    esac
+  done
+  shift $((OPTIND - 1 ))
+  script_args+=("$lock")
+}
+
 ### main ###
 # Description:
 # Main routine
-# Order specific:
-#   1. Set local and global values
-#   2. Load lib/get-deps.sh, it contains get_deps() which is used to load the rest of the dependencies
-#   3. Load the rest of the dependencies using get_deps()
-#   3. Initialize by calling init()
-#   4. Update by calling update(). Clean up if the update fails
+# This function must follow a very specific order of execution:
+#   1. Set local values, global values and process the --help option
+#   2. Harvest short options from argv and append them to the global script args array
+#   3. Load lib/get-deps.sh and use it's function get_deps() to load the rest of the dependencies
+#   4. Load the rest of the dependencies using get_deps()
+#   5. init() --> REPLACE_WITH_SCRIPT_NAME() --> cleanup()
 #
 # Note:
 # Dependency loading is synchronous and happens on every invocation of the script
-# unless the global option --load-deps-locally is used
-# init() and update() cleanup after themselves
+# unless the global option --load-deps-locally is in argv
 main() {
   local dependencies=(
                        'util.sh'
@@ -335,35 +428,52 @@ main() {
                        'download.sh'
                        )
   local possible_option=() 
-  local abort="update aborted"
-  local ec
+  local ec arg abort="aborted"
 
-  # Set globals once and never touch them again
-  script_args=("$@");
-  # Alter as needed but do not remove --load-deps-locally
+  # Set globally supported long options
   global_supported_options=(
+    --force
     --help
     --load-deps-locally
     --no-colors
     --prompt-diffs
+    --quiet
+    --skip-diff-prompts
     --strict
   )
 
-  # Process the --help directive first since it requires no dependencies to do so
-  [[ " ${script_args[*]} " =~ " --help " ]] && help && exit 1
+  # Handle options that have no dependencies and should exit when completed
+  [[ " $* " =~ " --help " ]] && help && exit 1
+  [[  " $* " =~ " --version " || " $* " =~ " -V " ]] && version && exit 1
 
-  # Load the loader (get-deps.sh)
+  # Harvest short options from argv
+  for arg in "$@"; do
+    [[ $arg =~ ^-[^\--].* ]] && short_options+=("$arg")
+  done
+
+  # Set the global $script_args array
+  if printf '%s\n' "$@" | grep -Fxq -- "--skip-diff-prompts"; then
+    script_args=("$@");
+  else
+    script_args=("$@" "--prompt-diffs");
+  fi
+
+  # Append the global $script_args array with the long option equivalents of the short options in argv
+  if ! init_script_args "${short_options[@]}"; then echo "$abort"; exit 1; fi
+
+  # Load the loader (lib/get-deps.sh)
   if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
     possible_option=(--load-deps-locally)
     load_get_deps_locally
   else
+    if load_deps_locally_option_looks_mispelled; then exit 1; fi
     load_get_deps
   fi
 
-  # Use the loaded loader it to load the rest of the dependencies
+  # Use the loaded loader to load the rest of the dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
 
-  # Initialize, update and cleanup
+  # Initialize, REPLACE_WITH_SCRIPT_NAME and finally cleanup
   if ! init; then cleanup; exit 1; fi
   if ! REPLACE_WITH_SCRIPT_NAME; then cleanup; exit 1; fi
   cleanup

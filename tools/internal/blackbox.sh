@@ -176,6 +176,36 @@ install() {
   echo -e "SUCCESS: gitpod-laravel-starter v$1 has been installed to $(pwd)"
 }
 
+new_tool_boilerplate() {
+  local input dest src="tools/internal/boilerplate.sh"
+
+  if [[ ! -d tools && ! -d tools/internal && ! -f $src ]]; then
+    echo "this script can only be run from the root of the gls-tools repository"
+    echo "could not find the required file $src"
+    return 1
+  fi
+    while true; do
+      read -rp "$( echo -en "Enter the name of tool you want to create boilerplate code for or Q to quit: ")" input
+      dest="$(pwd)/tools/$input.sh"
+      if [[ -f $dest ]]; then
+        echo "A tool named $input already exists at $dest"
+      elif [[ $input == 'q' || $input == 'Q' ]]; then
+        echo "command aborted by user";
+        exit
+      else
+       break;
+      fi
+    done
+
+    if sed "s/REPLACE_WITH_SCRIPT_NAME/$input/" "$src" > "$dest"; then
+      echo "SUCCES: the boilerplate code for the new tool $input has been create at $dest"
+      exit
+    fi
+
+    echo "failed to parse $src"
+    return 1
+}
+
 new() {
   local msg1 msg2 msg3="To see a list of valid gls versions run: gls version-list"
 
@@ -208,7 +238,7 @@ new() {
       if ! version_exists "$2"; then echo -e "$msg1\n$msg3"; return 1; fi
       if ! version_exists "$3"; then echo -e "$msg2\n$msg3"; return 1; fi
 
-      msg1="reating a new $1 will delete any existing sandbox and the control sandbox for v$3."
+      msg1="creating a new $1 will delete any existing sandbox and the control sandbox for v$3."
       if prompt_y_n "$msg1\n\tProceed"; then
         if new_sandbox "$2"; then
           cd .. || return 1
@@ -220,6 +250,10 @@ new() {
         return 1
       fi
       echo "Command '$1' aborted by user"
+    ;;
+
+    'tool')
+      if ! new_tool_boilerplate; then return 1; fi
     ;;
 
     *)
