@@ -184,11 +184,13 @@ new_tool_boilerplate() {
     echo "could not find the required file $src"
     return 1
   fi
+
+  if [[ -z $1 ]]; then
     while true; do
       read -rp "$( echo -en "Enter the name of tool you want to create boilerplate code for or Q to quit: ")" input
       dest="$(pwd)/tools/$input.sh"
       if [[ -f $dest ]]; then
-        echo "A tool named $input already exists at $dest"
+        echo "The tool $input.sh already exists at: $dest"
       elif [[ $input == 'q' || $input == 'Q' ]]; then
         echo "command aborted by user";
         exit
@@ -196,14 +198,18 @@ new_tool_boilerplate() {
        break;
       fi
     done
+  else
+    dest="$(pwd)/tools/$1.sh"
+    [[ -f $dest ]] && echo "The tool $1.sh already exists at: $dest" && exit 1
+  fi
 
-    if sed "s/REPLACE_WITH_SCRIPT_NAME/$input/" "$src" > "$dest"; then
-      echo "SUCCES: the boilerplate code for the new tool $input has been create at $dest"
-      exit
-    fi
+  if sed "s/REPLACE_WITH_SCRIPT_NAME/$input/" "$src" > "$dest"; then
+    echo -e "SUCCESS: Boilerplate code for the new tool $input.sh has been created at:\n$dest"
+    exit
+  fi
 
-    echo "failed to parse $src"
-    return 1
+  echo "failed to parse $src"
+  return 1
 }
 
 new() {
@@ -253,7 +259,8 @@ new() {
     ;;
 
     'tool')
-      if ! new_tool_boilerplate; then return 1; fi
+      [[ -n $3 ]] && echo "invalid command chain: $*" && exit 1
+      if ! new_tool_boilerplate "$2"; then return 1; fi
     ;;
 
     *)
