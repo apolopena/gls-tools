@@ -7,7 +7,7 @@
 # color.sh
 #
 # Description:
-# Barebones, opinionated color support for shellscripts.
+# Barebones, opinionated color support for shell scripts.
 #
 # Example usage:
 # 
@@ -21,7 +21,7 @@
 
 ### supports_truecolor ###
 # Description:
-# returns 0 if the terminal supports truecolor and retuns 1 otherwise
+# returns 0 if the terminal supports truecolor, returns 1 otherwise
 supports_truecolor() {
   case "$COLORTERM" in
   truecolor|24bit) return 0 ;;
@@ -67,8 +67,9 @@ c_18='\e[1;31m' # spinner.sh Red
 # BEGIN: Functions
 
 ### use_color ###
-# Description: Flag function for determining when to use colors.
-# returns 0 if stdout is a terminal, returns 1 otherwise
+# Description:
+# Flag function for determining when to use colors.
+# Returns 0 if stdout is a terminal, Returns 1 otherwise
 if [[ ! -t 1 ]]; then
   use_color() {
     false
@@ -117,7 +118,7 @@ remove_colors() {
 
 ###  ###
 # Description:
-# Sets color values if stdout is a terminal.
+# Sets color values if stdout is a terminal
 # Color values are cleared out if this script is piped or redirected
 handle_colors() {
   if use_color; then set_colors; else remove_colors; fi
@@ -129,6 +130,5 @@ raw_spinner_color() {
     'red'  ) echo "$c_spinner_red";;
   esac
 }
-
 
 # END: Functions

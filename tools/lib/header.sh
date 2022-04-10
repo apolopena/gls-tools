@@ -7,7 +7,7 @@
 #
 # Description:
 # Fancy ANSI 256 colorized headers for gls tools with matching footer ($1)
-# Supported footers are: installer, uninstaller and updater
+# Supported footers are: installer, uninstaller, updater and success
 # Unsupported footers will not display when stdin is a terminal (color)
 #
 # Note:
@@ -16,7 +16,7 @@
 # Pass no arguments if you want ensure that in all situations you get a header with no footer in it
 #
 # Example usage:
-# . header.sh && gls_header 'installer'
+# source header.sh && gls_header 'installer'
 
 # Satisfy shellcheck, script_args is set from outside this library
 script_args=

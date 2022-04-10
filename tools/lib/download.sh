@@ -64,11 +64,6 @@ download_release_json() {
 #  A warn_msg() or err_msg() function does not exist
 #  Cannot cd into $target_dir
 #  Cannot cd from $target_dir to $project_root
-#  
-#
-# Requires Globals
-# $target_dir
-# $project_root
 #
 # Note:
 # It is assumed that this function is called from $project_root and that $target_dir is relative to it

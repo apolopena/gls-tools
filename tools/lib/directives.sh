@@ -9,7 +9,7 @@
 #
 # Description:
 # Executes directives from a manifest to either keep or backup files or directories
-# Files and driectories are recommended to be backed up if they have the potential to share project data
+# Files and directories are recommended to be backed up if they have the potential to share project data
 # such as .gitignore or even a hybrid setup where .gitpod.yml or .gitpod.Dockerfile has been altered
 # Backed up files and directories can then be merged by hand back into the updated project.
 #
@@ -104,19 +104,20 @@ ___is_element() {
 # Downloads and parses a valid manifest (to $1) into global directive arrays 
 # If $1 is not passed in then the global $tmp_dir will be used if it is a valid directory
 # $1 or $tmp_dir should be the temporary working direcotry for an update, install or uninstall
-# If $1 or $tmp_dir (depending on which is used) are not a valid directory exit code 1 will be returned
+# If $1 or $tmp_dir (depending on which is used) is not a valid directory then exit code 1 will be returned
 # Can be used to set any number of directives contained in the manifest ($1) by passing in any number
 # of supported long options as an arguments to this function ($2...$10) as long as they come after the
-# manifest argument ($1). Supported long options are --keep-only and --recommend-backup-only
+# manifest argument ($1)
+# Supported long options are --keep-only and --recommend-backup-only
 # If no supported long options arguments are passed into this function then all directives in the
 # manifest will be set.
 #
 # Note:
 # A hardcoded default manifest will be used if the manifest cannot be downloaded
-# Will error out if an unsupported options are used. See the supported options variable in this function
-# for more details.
+# Will error out if any unsupported options are passed in
+# See the supported options variable in this function for more details
 # The following global array will be set if the manifest is successfully parsed:
-# $__data_keeps$ $__data_backups
+# $__data_keeps; $__data_backups
 set_directives() {
   local err_pre="${c_norm_prob}set_directives() internal error:${c_e}"
   local e_short_opt="${c_norm_prob} short options are not allowed:"
@@ -203,8 +204,8 @@ set_directives() {
 
 ### has_directive ###
 # Description:
-# returns 0 on the first occurrence of a start marker ($1) in a manifest file ($2)
-# returns 1 if there are no occurrences of a start marker ($1) in a manifest file ($2)
+# Returns 0 on the first occurrence of a start marker ($1) in a manifest file ($2)
+# Returns 1 if there are no occurrences of a start marker ($1) in a manifest file ($2)
 # If the manifest argument ($2) is empty then the default manifest will be used
 has_directive() {
   local manifest err_pre="has_directive() error:"
@@ -308,7 +309,7 @@ execute_directives() {
 # This function should be error handled by the caller even though this function is robust
 # This function will return an error if the target location is not a subpath of $project_root
 # If the global variable $base_version is not set then it will be set locally to the string: unknown
-# Exit code 1 is returned if any required global variables are not present or not valid files
+# Returns 1 if any required global variables are not present or not valid files
 # or directories
 #
 # Required Globals Variables:
@@ -450,7 +451,8 @@ ___keep() {
 
 ### recommend_backup ###
 # Description:
-# 
+# Recommends backup for a file or directory
+# Backs up a file or directory
 # Requires Globals:
 # $project_root $backups_dir
 ___recommend_backup() {
@@ -704,7 +706,7 @@ ___backup() {
 
 ### ___show_diff ###
 # Description:
-#
+# Internal function to show a diff between two files or directories
 ___show_diff() {
   local output l1 l2 has_long_option_exists
   has_long_option_exists="$(declare -f "has_long_option" > /dev/null)"
@@ -729,7 +731,8 @@ ___show_diff() {
 
 ### ___prompt_diff ###
 # Description:
-#
+# Internal function to prompt a user to decide if they want to be shown a diff between
+# two files or directories
 ___prompt_diff() {
   local input question yn prompt_again1 prompt_again1b
   

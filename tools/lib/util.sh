@@ -9,7 +9,7 @@
 # Utility library
 # 
 # Note:
-# Only share functions from this script that really need to be shared
+# Only add functions to this this script that really need to be shared
 # Avoid the 'god object' even though the 'utils' pattern this script uses encourages it ;)
 
 
