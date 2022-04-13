@@ -201,6 +201,7 @@ new_tool_boilerplate() {
   else
     dest="$(pwd)/tools/$1.sh"
     [[ -f $dest ]] && echo "The tool $1.sh already exists at: $dest" && exit 1
+    input="$1"
   fi
 
   if sed "s/REPLACE_WITH_SCRIPT_NAME/$input/" "$src" > "$dest"; then
