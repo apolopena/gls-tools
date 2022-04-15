@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
 #
-# blackbox.sh
+# change-version.sh
 #
 # Description:
 # Changes the version number in any changed gls-tool by parsing code files
