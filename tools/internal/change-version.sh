@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck source=/dev/null # Allow dynamic source paths
 #
 # SPDX-License-Identifier: MIT
 # Copyright © 2022 Apolo Pena
@@ -6,8 +7,9 @@
 # change-version.sh
 #
 # Description:
-# Changes the version number in any changed gls-tool by parsing code files
-# A diff of the changes the script makes will be shown
+# Changes the version number in any gls-tool that has changed since the latest release
+# A diff of the changes the script makes will be shown and then the code files will be parsed
+# to update the version numbers either by patch, minor, or major version
 #
 # Note: This tool will only work in a clone of a gls-tools repository
 # Calling and invoking this script via curl is not supported
@@ -20,6 +22,11 @@ script_args=()
 
 # Options this script supports. Set by main()
 global_supported_options=()
+
+# Type of version to bump up, set by init_script_args if the -b option is used
+# or set interactively via a prompt
+# can be: major, minor, patch
+bump_type=
 
 # Project root. Never run this script from outside the project root. Set by init()
 project_root=
@@ -49,7 +56,7 @@ c_norm_b=; c_norm_prob=; c_number=; c_uri=; c_warn=; c_pass=; c_file_name=; c_fi
 # Description:
 # Outputs version information
 version() {
-  echo "vx.x.x
+  echo "v1.0.0
 change-version is a gitpod-larvel-starter tool from the gls-tools suite
 Copyright © 2022 Apolo Pena
 License MIT <https://spdx.org/licenses/MIT.html>
@@ -67,11 +74,10 @@ help() {
   echo -e "Usage: change-version [-option | --option]...
 Install the latest version of apolopena/gitpod-laravel-starter
 Example: change-version -s
-
+-b                          -b=STRING bump up version type by STRING
+                              valid values for STRING sre: major, minor, patch
     --help                  display this help and exit
 -n, --no-colors             omit colors from terminal output
--p, --prompt-diffs          prompt to show differences before overwriting
-                              this option is set by default
 -s, --skip-diff-prompts     skip prompts to show differences before overwriting
 -V, --version               output version information and exit"
 }
@@ -84,21 +90,6 @@ name() {
   printf '%s' "${c_file_name}change-version.sh${c_e}"
 }
 
-### load_get_deps ###
-# Description:
-# Synchronously downloads and sources the dependency loader library (lib/get-deps.sh) from
-# https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh
-load_get_deps() {
-  local get_deps_url="https://raw.githubusercontent.com/apolopena/gls-tools/main/tools/lib/get-deps.sh"
-
-  if ! curl --head --silent --fail "$get_deps_url" &> /dev/null; then
-    echo -e "failed to load the loader from:\n\t$get_deps_url" && exit 1
-  fi
-  source <(curl -fsSL "$get_deps_url" &)
-  ec=$?;
-  if [[ $ec != 0 ]] ; then echo -e "failed to source the loader from:\n\t$get_deps_url"; exit 1; fi; wait;
-}
-
 ### load_get_deps_locally ###
 # Description:
 # Sources the dependency loader library (lib/get-deps.sh) from the local filesystem
@@ -106,8 +97,8 @@ load_get_deps_locally() {
   local this_script_dir
 
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
-  if ! source "$this_script_dir/lib/get-deps.sh"; then
-    echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
+  if ! source "$this_script_dir/../lib/get-deps.sh"; then
+    echo -e "failed to source the loader from the local file system:\n\t$this_script_dir/lib/get-deps.sh"
     exit 1
   fi
 }
@@ -197,29 +188,6 @@ set_target_version() {
   fi
 
   target_dir="$tmp_dir/$target_version"
-}
-
-### load_deps_locally_option_looks_mispelled ###
-# Description:
-# Searches the global $script_args array for a possible typo in the --load-deps-locally option
-# Returns 1 and outputs a message showing what was matched if a possible typo is found
-# Returns 0 if no typo is found or if the global $script_args array has no elements in it
-# 
-# Usage example:
-# script_args=("$@"); if load_deps_locally_option_looks_mispelled; then exit 1; fi
-#
-# Note:
-# Be aware that the exit codes for this function are intentionally reversed
-load_deps_locally_option_looks_mispelled() {
-  local script_args_flat
-  
-  [[ ${#script_args[@]} -eq 0 ]] && return 1
-  script_args_flat="$(printf '%s\n' "${script_args[@]}")"
-  if [[ $script_args_flat =~ [-]{0,3}lo[a|o]?[a-z]?d[a-z]?[-_]deps?[-_]local?ly ]]; then
-    echo -e "invalid option: ${BASH_REMATCH[0]}\ndid you mean? --load-deps-locally"
-    return 0
-  fi
-  return 1
 }
 
 ### init ###
@@ -315,14 +283,7 @@ change-version() {
   # Set directives, download/extract latest release and execute directives
   if ! install_latest_tarball "$release_json" --treat-as-unbuilt; then abort_msg && return 1; fi
 
-
-  # Purge originals first to ensure nothing old remains since we are using cp instead of rsync
-  if ! rm -rf .gp; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
-  if ! rm -rf .vscode; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
-  if ! rm -rf .github; then warn_msg "$warn_msg1\n\t$warn_msg1b"; fi
-
-  # change-version
-  if ! cp -a "$target_dir/." "$project_root"; then return 1; fi
+  echo "verify valid bump from $target_version type here for: $bump_type"
 
   # Success
   echo -e "$fin_msg1 ${c_norm_b}has been installed${c_e}"
@@ -355,6 +316,10 @@ cleanup() {
   done 
 }
 
+valid_bump_type() {
+  [[ $1 != 'major' && $1 != 'minor' && $1 != 'patch' ]] && return 1 || return 0
+}
+
 ### init_script_args ###
 # Description:
 # One-time function to convert supported short options ($1) to long options and 
@@ -368,15 +333,16 @@ init_script_args() {
     echo -e "${c_norm_prob}init_script_args() internal error: this function can only be called once${c_e}"
     return 1
   fi
-  while getopts ":FlnpqsS" opt; do
+  while getopts ":b:nps" opt; do
     case $opt in
-      F) script_args+=( --force ) ;;
-      l) script_args+=( --load-deps-locally );;
+      b) if valid_bump_type "${OPTARG:1}"; then 
+           bump_type="${OPTARG:1}"
+         else
+           echo "invalid -b (bump type) value: ${OPTARG:1}"; exit 1;
+         fi ;; 
       n) script_args+=( --no-colors ) ;;
       p) script_args+=( --prompt-diffs ) ;;
-      q) script_args+=( --quiet ) ;;
       s) script_args+=( --skip-diff-prompts) ;;
-      S) script_args+=( --strict) ;;
       \?) echo "illegal option: -$OPTARG"; exit 1 ;;
     esac
   done
@@ -408,10 +374,11 @@ main() {
                        'download.sh'
                        )
   local possible_option=() 
-  local ec arg abort="aborted"
+  local arg abort="aborted"
 
   # Set globally supported long options
   global_supported_options=(
+    --bump
     --help
     --no-colors
     --prompt-diffs
@@ -438,13 +405,7 @@ main() {
   if ! init_script_args "${short_options[@]}"; then echo "$abort"; exit 1; fi
 
   # Load the loader (lib/get-deps.sh)
-  if printf '%s\n' "${script_args[@]}" | grep -Fxq -- "--load-deps-locally"; then
-    possible_option=(--load-deps-locally)
-    load_get_deps_locally
-  else
-    if load_deps_locally_option_looks_mispelled; then exit 1; fi
-    load_get_deps
-  fi
+  load_get_deps_locally
 
   # Use the loaded loader to load the rest of the dependencies
   if ! get_deps "${possible_option[@]}" "${dependencies[@]}"; then echo "$abort"; exit 1; fi
@@ -452,7 +413,7 @@ main() {
   # Initialize, change-version and finally cleanup
   if ! init; then cleanup; exit 1; fi
   if ! change-version; then cleanup; exit 1; fi
-  cleanup
+  #cleanup
 }
 # END: functions
 
