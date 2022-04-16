@@ -122,7 +122,7 @@ load_get_deps_locally() {
 
   this_script_dir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
   if ! source "$this_script_dir/lib/get-deps.sh"; then
-    echo -e "failed to source the loader from the local file system:\n\t$get_deps_url"
+    echo -e "failed to source the loader from the local file system:\n\t$this_script_dir/lib/get-deps.sh"
     exit 1
   fi
 }
